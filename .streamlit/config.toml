@@ -1,0 +1,14 @@
+[theme]
+# Apple-inspired Dark Theme для DataCulture Platform
+primaryColor = "#5A9DF8"           # Синий акцент Apple
+backgroundColor = "#1e1e22"        # Основной тёмный фон
+secondaryBackgroundColor = "#2a2a30"  # Фон карточек и контейнеров
+textColor = "#e0e0e6"              # Основной цвет текста
+font = "sans-serif"                # Системный шрифт (SF Pro на macOS)
+
+[server]
+headless = true
+port = 8501
+
+[browser]
+gatherUsageStats = false
