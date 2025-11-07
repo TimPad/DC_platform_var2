@@ -344,7 +344,24 @@ if grades_file:
                             st.metric("Уже существовало", existing_count)
                         
                         # Получение новых записей
-                        new_records_df = get_new_records(result_df)
+                        existing_peresdachi = load_existing_peresdachi()
+                        if existing_peresdachi.empty:
+                            # Если база пуста, все записи считаются новыми
+                            display_new_records = result_df
+                            st.info(f"В базе нет существующих записей. Все {len(result_df)} записей являются новыми.")
+                        else:
+                            # Проверяем, есть ли совпадения
+                            merge_cols = ['Адрес электронной почты', 'Наименование дисциплины']
+                            if all(col in existing_peresdachi.columns for col in merge_cols) and all(col in result_df.columns for col in merge_cols):
+                                merged = result_df.merge(
+                                    existing_peresdachi[merge_cols],
+                                    on=merge_cols,
+                                    how='left',
+                                    indicator=True
+                                )
+                                display_new_records = merged[merged['_merge'] == 'left_only'].drop('_merge', axis=1)
+                            else:
+                                display_new_records = result_df  # Если колонки не совпадают, все как новые
                         
                         # Предпросмотр
                         tab1, tab2 = st.tabs(["Все обработанные данные", "Только новые записи"])
@@ -369,14 +386,14 @@ if grades_file:
                             )
                         
                         with tab2:
-                            if new_records_df.empty:
+                            if display_new_records.empty:
                                 st.info("Новых записей нет. Все данные уже были в базе.")
                             else:
-                                st.dataframe(new_records_df, use_container_width=True)
+                                st.dataframe(display_new_records, use_container_width=True)
                                 
                                 output_new = io.BytesIO()
                                 with pd.ExcelWriter(output_new, engine='openpyxl') as writer:
-                                    new_records_df.to_excel(writer, index=False, sheet_name='Новые пересдачи')
+                                    display_new_records.to_excel(writer, index=False, sheet_name='Новые пересдачи')
                                 output_new.seek(0)
                                 
                                 download_filename_new = f"Пересдачи_новые_{current_date}.xlsx"
