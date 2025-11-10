@@ -110,72 +110,51 @@ def load_existing_peresdachi() -> pd.DataFrame:
         st.warning(f"Таблица peresdachi не найдена или пуста: {str(e)}")
         return pd.DataFrame()
 
-def save_to_supabase(df: pd.DataFrame) -> Tuple[int, int]:
+def save_to_supabase(df: pd.DataFrame) -> bool:
     """Сохранение данных в таблицу peresdachi в Supabase"""
     try:
         supabase = get_supabase_client()
         
-        existing_df = load_existing_peresdachi()
+        if df.empty:
+            return True  # Нечего сохранять, считаем успехом
         
-        if existing_df.empty:
-            new_records = df.to_dict('records')
-            new_count = len(new_records)
-        else:
-            merge_cols = ['Адрес электронной почты', 'Наименование дисциплины']
-            
-            if all(col in existing_df.columns for col in merge_cols) and all(col in df.columns for col in merge_cols):
-                merged = df.merge(
-                    existing_df[merge_cols],
-                    on=merge_cols,
-                    how='left',
-                    indicator=True
-                )
-                new_df = merged[merged['_merge'] == 'left_only'].drop('_merge', axis=1)
-                new_records = new_df.to_dict('records')
-                new_count = len(new_records)
-            else:
-                new_records = df.to_dict('records')
-                new_count = len(new_records)
+        cleaned_records = []
+        for record in df.to_dict('records'):
+            cleaned_record = {k: (v if pd.notna(v) else None) for k, v in record.items()}
+            cleaned_records.append(cleaned_record)
         
-        if new_records:
-            cleaned_records = []
-            for record in new_records:
-                cleaned_record = {k: (v if pd.notna(v) else None) for k, v in record.items()}
-                cleaned_records.append(cleaned_record)
-            
-            response = supabase.table('peresdachi').insert(cleaned_records).execute()
-            
-        return new_count, len(df)
+        response = supabase.table('peresdachi').insert(cleaned_records).execute()
+        return True
         
     except Exception as e:
         st.error(f"Ошибка при сохранении в Supabase: {str(e)}")
-        raise e
+        return False
 
-def get_new_records(all_df: pd.DataFrame) -> pd.DataFrame:
-    """Получить только новые записи, которых еще нет в базе"""
+def get_new_records_from_dataframe(new_df: pd.DataFrame) -> pd.DataFrame:
+    """Получить только новые записи, сравнивая с существующими в БД"""
     try:
         existing_df = load_existing_peresdachi()
         
         if existing_df.empty:
-            return all_df
+            return new_df
         
         merge_cols = ['Адрес электронной почты', 'Наименование дисциплины']
         
-        if all(col in existing_df.columns for col in merge_cols) and all(col in all_df.columns for col in merge_cols):
-            merged = all_df.merge(
+        if all(col in existing_df.columns for col in merge_cols) and all(col in new_df.columns for col in merge_cols):
+            merged = new_df.merge(
                 existing_df[merge_cols],
                 on=merge_cols,
                 how='left',
                 indicator=True
             )
-            new_df = merged[merged['_merge'] == 'left_only'].drop('_merge', axis=1)
-            return new_df
+            result = merged[merged['_merge'] == 'left_only'].drop('_merge', axis=1)
+            return result
         else:
-            return all_df
+            return new_df
             
     except Exception as e:
         st.warning(f"Ошибка при определении новых записей: {str(e)}")
-        return all_df
+        return new_df
 
 def process_external_assessment(grades_df: pd.DataFrame, students_df: pd.DataFrame) -> pd.DataFrame:
     """Обработка пересдач внешней оценки"""
@@ -324,13 +303,20 @@ if grades_file:
                     else:
                         st.success("Обработка успешно завершена!")
                         
+                        # Определяем новые записи ДО сохранения в БД
+                        with st.spinner("Определение новых записей..."):
+                            display_new_records = get_new_records_from_dataframe(result_df)
+                            new_count = len(display_new_records)
+                            total_count = len(result_df)
+                        
                         # Сохранение в Supabase
                         with st.spinner("Сохранение в Supabase..."):
-                            try:
-                                new_count, total_count = save_to_supabase(result_df)
+                            save_success = save_to_supabase(result_df)
+                            if save_success:
                                 st.success(f"Сохранено в Supabase: {new_count} новых записей из {total_count}")
-                            except Exception as e:
-                                st.error(f"Ошибка при сохранении: {str(e)}")
+                            else:
+                                st.error("Ошибка при сохранении данных в Supabase")
+                                st.stop()  # Прерываем, если не удалось сохранить
                         
                         # Статистика
                         st.subheader("Результаты обработки")
@@ -342,26 +328,6 @@ if grades_file:
                         with col3:
                             existing_count = total_count - new_count
                             st.metric("Уже существовало", existing_count)
-                        
-                        # Получение новых записей
-                        existing_peresdachi = load_existing_peresdachi()
-                        if existing_peresdachi.empty:
-                            # Если база пуста, все записи считаются новыми
-                            display_new_records = result_df
-                            st.info(f"В базе нет существующих записей. Все {len(result_df)} записей являются новыми.")
-                        else:
-                            # Проверяем, есть ли совпадения
-                            merge_cols = ['Адрес электронной почты', 'Наименование дисциплины']
-                            if all(col in existing_peresdachi.columns for col in merge_cols) and all(col in result_df.columns for col in merge_cols):
-                                merged = result_df.merge(
-                                    existing_peresdachi[merge_cols],
-                                    on=merge_cols,
-                                    how='left',
-                                    indicator=True
-                                )
-                                display_new_records = merged[merged['_merge'] == 'left_only'].drop('_merge', axis=1)
-                            else:
-                                display_new_records = result_df  # Если колонки не совпадают, все как новые
                         
                         # Предпросмотр
                         tab1, tab2 = st.tabs(["Все обработанные данные", "Только новые записи"])
