@@ -1,5 +1,5 @@
 """
-Модуль 6: Списки студентов
+Модуль 6: Обновление списка студентов
 UPSERT в таблицу students
 """
 
@@ -14,12 +14,12 @@ apply_custom_css()
 
 # Заголовок страницы
 st.markdown(
-    f'<h1>{icon("users", 32)} Списки студентов</h1>',
+    f'<h1>{icon("users", 32)} Обновление списка студентов</h1>',
     unsafe_allow_html=True
 )
 
 st.markdown("""
-Загрузка и Списки студентов в базе данных Supabase.
+Загрузка и обновление списка студентов в базе данных Supabase.
 
 **Возможности:**
 - Загрузка списка студентов из Excel или CSV файла
@@ -177,8 +177,9 @@ def load_student_list_file(uploaded_file) -> pd.DataFrame:
         st.error(f"Ошибка загрузки списка студентов: {e}")
         return pd.DataFrame()
 
-def load_students_from_supabase() -> pd.DataFrame:
-    """Загрузка списка студентов из Supabase"""
+@st.cache_data(ttl=300)
+def load_students_from_supabase_cached():
+    """Загрузка списка студентов из Supabase с кэшированием"""
     try:
         supabase = get_supabase_client()
         
@@ -325,7 +326,7 @@ else:
 
     # Загружаем данные для фильтрации
     try:
-        all_students = load_students_from_supabase()
+        all_students = load_students_from_supabase_cached()
         if not all_students.empty:
             # Создаем фильтры
             st.subheader("Фильтры для скачивания")
@@ -494,7 +495,7 @@ else:
     # Проверка текущего состояния базы
     with st.expander("Текущее состояние базы данных"):
         try:
-            current_students = load_students_from_supabase()
+            current_students = load_students_from_supabase_cached()
             if current_students.empty:
                 st.info("Таблица students пуста или не создана")
             else:
