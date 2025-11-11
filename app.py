@@ -102,27 +102,7 @@ with st.sidebar:
         unsafe_allow_html=True
     )
     
-    # Быстрые действия
-    with st.expander("Быстрые действия", expanded=False):
-        st.markdown(
-            f"""
-            <div style='font-size: 0.85rem;'>
-            <strong>{icon('link', 16)} Полезные ссылки:</strong>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Database", use_container_width=True, key="db_btn"):
-                st.markdown('[Open Supabase](https://ldagdlotggsrvsspnfmr.supabase.co)', unsafe_allow_html=True)
-        
-        with col2:
-            if st.button("Docs", use_container_width=True, key="docs_btn"):
-                st.info("Документация доступна в README.md")
-    
-    st.markdown("<hr class='sidebar-divider'>", unsafe_allow_html=True)
+   
     
     # Статистика и статус
     with st.expander("Статистика", expanded=False):
