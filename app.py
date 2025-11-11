@@ -61,7 +61,7 @@ course_analytics_page = st.Page(
 
 student_list_update_page = st.Page(
     "pages/6_student_list_update.py",
-    title="Обновление списка студентов",
+    title="Списки студентов",
     icon=":material/group:"
 )
 
