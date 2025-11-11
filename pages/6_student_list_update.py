@@ -314,6 +314,63 @@ if students_file:
 else:
     st.info("Загрузите файл со списком студентов")
     
+    # Добавляем возможность скачивания актуального списка из Supabase
+    st.markdown("---")
+    st.markdown("### Скачать актуальный список студентов")
+
+    if st.button("Получить актуальный список из базы", key="download_students_btn"):
+        with st.spinner("Загрузка данных из Supabase..."):
+            try:
+                current_students = load_students_from_supabase()
+                if current_students.empty:
+                    st.info("В базе данных нет студентов")
+                else:
+                    # Подготовка данных для скачивания
+                    csv_data = current_students.to_csv(index=False, sep=';', encoding='utf-8-sig')
+                    
+                    st.download_button(
+                        label="📥 Скачать список студентов (CSV)",
+                        data=csv_data,
+                        file_name=f"students_export_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv",
+                        key="download_csv_btn"
+                    )
+                    
+                    st.success(f"Готово! В базе: {len(current_students)} студентов")
+                    
+            except Exception as e:
+                st.error(f"Ошибка при загрузке данных: {str(e)}")
+                st.exception(e)
+
+    # Также можно добавить кнопку для скачивания в формате Excel
+    if st.button("Получить список в формате Excel", key="download_xlsx_btn"):
+        with st.spinner("Подготовка Excel-файла..."):
+            try:
+                current_students = load_students_from_supabase()
+                if current_students.empty:
+                    st.info("В базе данных нет студентов")
+                else:
+                    from io import BytesIO
+                    buffer = BytesIO()
+                    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                        current_students.to_excel(writer, index=False, sheet_name='Students')
+                    
+                    buffer.seek(0)
+                    
+                    st.download_button(
+                        label="📥 Скачать список студентов (Excel)",
+                        data=buffer,
+                        file_name=f"students_export_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="download_xlsx_file"
+                    )
+                    
+                    st.success(f"Excel-файл готов! В базе: {len(current_students)} студентов")
+                    
+            except Exception as e:
+                st.error(f"Ошибка при подготовке Excel-файла: {str(e)}")
+                st.exception(e)
+    
     st.markdown("---")
     st.markdown("### Инструкция")
     st.markdown("""
