@@ -314,62 +314,145 @@ if students_file:
 else:
     st.info("Загрузите файл со списком студентов")
     
-    # Добавляем возможность скачивания актуального списка из Supabase
+    # Добавляем возможность скачивания актуального списка из Supabase с фильтрацией
     st.markdown("---")
     st.markdown("### Скачать актуальный список студентов")
 
-    if st.button("Получить актуальный список из базы", key="download_students_btn"):
-        with st.spinner("Загрузка данных из Supabase..."):
-            try:
-                current_students = load_students_from_supabase()
-                if current_students.empty:
-                    st.info("В базе данных нет студентов")
-                else:
-                    # Подготовка данных для скачивания
-                    csv_data = current_students.to_csv(index=False, sep=';', encoding='utf-8-sig')
-                    
-                    st.download_button(
-                        label="📥 Скачать список студентов (CSV)",
-                        data=csv_data,
-                        file_name=f"students_export_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                        mime="text/csv",
-                        key="download_csv_btn"
-                    )
-                    
-                    st.success(f"Готово! В базе: {len(current_students)} студентов")
-                    
-            except Exception as e:
-                st.error(f"Ошибка при загрузке данных: {str(e)}")
-                st.exception(e)
+    # Загружаем данные для фильтрации
+    try:
+        all_students = load_students_from_supabase()
+        if not all_students.empty:
+            # Создаем фильтры
+            st.subheader("Фильтры для скачивания")
+            
+            # Получаем уникальные значения для каждого фильтра
+            campus_options = ['Все'] + sorted(all_students['Филиал (кампус)'].dropna().unique().tolist()) if 'Филиал (кампус)' in all_students.columns else ['Все']
+            faculty_options = ['Все'] + sorted(all_students['Факультет'].dropna().unique().tolist()) if 'Факультет' in all_students.columns else ['Все']
+            program_version_options = ['Все'] + sorted(all_students['Версия образовательной программы'].dropna().unique().tolist()) if 'Версия образовательной программы' in all_students.columns else ['Все']
+            course_options = ['Все'] + sorted(all_students['Курс'].dropna().unique().tolist()) if 'Курс' in all_students.columns else ['Все']
+            
+            # Создаем колонки для фильтров
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                selected_campus = st.selectbox("Филиал (кампус)", campus_options, key="filter_campus")
+                if st.button("🔄", key="reset_campus", help="Сбросить фильтр"):
+                    st.session_state["filter_campus"] = 'Все'
+                    st.rerun()
+            
+            with col2:
+                selected_faculty = st.selectbox("Факультет", faculty_options, key="filter_faculty")
+                if st.button("🔄", key="reset_faculty", help="Сбросить фильтр"):
+                    st.session_state["filter_faculty"] = 'Все'
+                    st.rerun()
+            
+            with col3:
+                selected_program_version = st.selectbox("Версия образовательной программы", program_version_options, key="filter_program_version")
+                if st.button("🔄", key="reset_program_version", help="Сбросить фильтр"):
+                    st.session_state["filter_program_version"] = 'Все'
+                    st.rerun()
+            
+            with col4:
+                selected_course = st.selectbox("Курс", course_options, key="filter_course")
+                if st.button("🔄", key="reset_course", help="Сбросить фильтр"):
+                    st.session_state["filter_course"] = 'Все'
+                    st.rerun()
+            
+            # Применяем фильтры
+            filtered_students = all_students.copy()
+            if selected_campus != 'Все' and 'Филиал (кампус)' in filtered_students.columns:
+                filtered_students = filtered_students[filtered_students['Филиал (кампус)'] == selected_campus]
+            if selected_faculty != 'Все' and 'Факультет' in filtered_students.columns:
+                filtered_students = filtered_students[filtered_students['Факультет'] == selected_faculty]
+            if selected_program_version != 'Все' and 'Версия образовательной программы' in filtered_students.columns:
+                filtered_students = filtered_students[filtered_students['Версия образовательной программы'] == selected_program_version]
+            if selected_course != 'Все' and 'Курс' in filtered_students.columns:
+                filtered_students = filtered_students[filtered_students['Курс'] == selected_course]
+            
+            st.info(f"После фильтрации: {len(filtered_students)} записей из {len(all_students)}")
+            
+            # Кнопки скачивания
+            col_btn1, col_btn2 = st.columns(2)
+            
+            with col_btn1:
+                if st.button("Получить отфильтрованный список (CSV)", key="download_filtered_csv_btn"):
+                    with st.spinner("Подготовка CSV файла..."):
+                        try:
+                            if filtered_students.empty:
+                                st.info("Нет данных для скачивания по выбранным фильтрам")
+                            else:
+                                csv_data = filtered_students.to_csv(index=False, sep=';', encoding='utf-8-sig')
+                                
+                                st.download_button(
+                                    label="📥 Скачать список студентов (CSV)",
+                                    data=csv_data,
+                                    file_name=f"students_export_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                    mime="text/csv",
+                                    key="download_filtered_csv"
+                                )
+                                
+                                st.success(f"CSV файл готов! {len(filtered_students)} записей")
+                                
+                        except Exception as e:
+                            st.error(f"Ошибка при подготовке CSV: {str(e)}")
+                            st.exception(e)
 
-    # Также можно добавить кнопку для скачивания в формате Excel
-    if st.button("Получить список в формате Excel", key="download_xlsx_btn"):
-        with st.spinner("Подготовка Excel-файла..."):
-            try:
-                current_students = load_students_from_supabase()
-                if current_students.empty:
-                    st.info("В базе данных нет студентов")
-                else:
-                    from io import BytesIO
-                    buffer = BytesIO()
-                    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                        current_students.to_excel(writer, index=False, sheet_name='Students')
-                    
-                    buffer.seek(0)
-                    
-                    st.download_button(
-                        label="📥 Скачать список студентов (Excel)",
-                        data=buffer,
-                        file_name=f"students_export_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key="download_xlsx_file"
-                    )
-                    
-                    st.success(f"Excel-файл готов! В базе: {len(current_students)} студентов")
-                    
-            except Exception as e:
-                st.error(f"Ошибка при подготовке Excel-файла: {str(e)}")
-                st.exception(e)
+            with col_btn2:
+                if st.button("Получить отфильтрованный список (Excel)", key="download_filtered_xlsx_btn"):
+                    with st.spinner("Подготовка Excel-файла..."):
+                        try:
+                            if filtered_students.empty:
+                                st.info("Нет данных для скачивания по выбранным фильтрам")
+                            else:
+                                from io import BytesIO
+                                buffer = BytesIO()
+                                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                                    filtered_students.to_excel(writer, index=False, sheet_name='Students')
+                                
+                                buffer.seek(0)
+                                
+                                st.download_button(
+                                    label="📥 Скачать список студентов (Excel)",
+                                    data=buffer,
+                                    file_name=f"students_export_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                    key="download_filtered_xlsx"
+                                )
+                                
+                                st.success(f"Excel-файл готов! {len(filtered_students)} записей")
+                                
+                        except Exception as e:
+                            st.error(f"Ошибка при подготовке Excel-файла: {str(e)}")
+                            st.exception(e)
+            
+            # Показываем предпросмотр отфильтрованных данных
+            with st.expander("Предпросмотр отфильтрованных данных"):
+                st.dataframe(filtered_students.head(20), use_container_width=True)
+        
+        else:
+            st.info("В базе данных нет студентов для скачивания")
+            # Кнопки скачивания для пустого списка
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                st.download_button(
+                    label="📥 Скачать пустой список (CSV)",
+                    data="",
+                    file_name=f"students_export_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    disabled=True
+                )
+            with col_btn2:
+                st.download_button(
+                    label="📥 Скачать пустой список (Excel)",
+                    data="",
+                    file_name=f"students_export_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    disabled=True
+                )
+
+    except Exception as e:
+        st.error(f"Ошибка при загрузке данных для фильтрации: {str(e)}")
+        st.exception(e)
     
     st.markdown("---")
     st.markdown("### Инструкция")
