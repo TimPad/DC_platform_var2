@@ -197,7 +197,7 @@ def load_students_from_supabase() -> pd.DataFrame:
             else:
                 break
         
-        if all_
+        if all_data:
             df = pd.DataFrame(all_data)
             
             column_mapping = {
