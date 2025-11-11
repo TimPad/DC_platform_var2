@@ -239,7 +239,9 @@ if not st.session_state['students_authorized']:
     )
     
     if st.button("Войти", type="primary", key="students_login_btn"):
-        if password_input == "1991":
+        # Получаем пароль из secrets
+        correct_password = st.secrets.get("STUDENTS_UPDATE_PASSWORD", "default_password")
+        if password_input == correct_password:
             st.session_state['students_authorized'] = True
             st.success("Доступ разрешен!")
             st.rerun()
