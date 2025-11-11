@@ -61,6 +61,7 @@ def upload_students_to_supabase(supabase, student_data):
                 'версия_образовательной_программы': str(row.get('Версия образовательной программы', '')) if pd.notna(row.get('Версия образовательной программы')) and str(row.get('Версия образовательной программы', '')).strip() else None,
                 'группа': str(row.get('Группа', '')) if pd.notna(row.get('Группа')) and str(row.get('Группа', '')).strip() else None,
                 'курс': str(row.get('Курс', '')) if pd.notna(row.get('Курс')) and str(row.get('Курс', '')).strip() else None,
+                'уровень_образования': str(row.get('Уровень образования', '')) if pd.notna(row.get('Уровень образования')) and str(row.get('Уровень образования', '')).strip() else None,
             }
             records_for_upsert.append(student_record)
         
@@ -135,7 +136,8 @@ def load_student_list_file(uploaded_file) -> pd.DataFrame:
             'Образовательная программа': ['образовательная программа', 'программа', 'educational program'],
             'Версия образовательной программы': ['версия образовательной программы', 'версия программы', 'program version', 'version'],
             'Группа': ['группа', 'group'],
-            'Курс': ['курс', 'course']
+            'Курс': ['курс', 'course'],
+            'Уровень образования': ['уровень образования', 'уровень', 'level', 'образование']
         }
 
         found_columns = {}
@@ -195,7 +197,7 @@ def load_students_from_supabase() -> pd.DataFrame:
             else:
                 break
         
-        if all_data:
+        if all_
             df = pd.DataFrame(all_data)
             
             column_mapping = {
@@ -206,7 +208,8 @@ def load_students_from_supabase() -> pd.DataFrame:
                 'образовательная_программа': 'Образовательная программа',
                 'версия_образовательной_программы': 'Версия образовательной программы',
                 'группа': 'Группа',
-                'курс': 'Курс'
+                'курс': 'Курс',
+                'уровень_образования': 'Уровень образования'
             }
             
             existing_columns = {k: v for k, v in column_mapping.items() if k in df.columns}
@@ -330,9 +333,11 @@ else:
             faculty_options = ['Все'] + sorted(all_students['Факультет'].dropna().unique().tolist()) if 'Факультет' in all_students.columns else ['Все']
             program_version_options = ['Все'] + sorted(all_students['Версия образовательной программы'].dropna().unique().tolist()) if 'Версия образовательной программы' in all_students.columns else ['Все']
             course_options = ['Все'] + sorted(all_students['Курс'].dropna().unique().tolist()) if 'Курс' in all_students.columns else ['Все']
+            level_options = ['Все'] + sorted(all_students['Уровень образования'].dropna().unique().tolist()) if 'Уровень образования' in all_students.columns else ['Все']
             
-            # Создаем колонки для фильтров
-            col1, col2, col3, col4 = st.columns(4)
+            # Создаем колонки для фильтров (делаем 3 колонки чтобы не было слишком узко)
+            col1, col2, col3 = st.columns(3)
+            col4, col5, col6 = st.columns(3)
             
             with col1:
                 selected_campus = st.selectbox("Филиал (кампус)", campus_options, key="filter_campus")
@@ -358,6 +363,16 @@ else:
                     st.session_state["filter_course"] = 'Все'
                     st.rerun()
             
+            with col5:
+                selected_level = st.selectbox("Уровень образования", level_options, key="filter_level")
+                if st.button("🔄", key="reset_level", help="Сбросить фильтр"):
+                    st.session_state["filter_level"] = 'Все'
+                    st.rerun()
+            
+            # Пустая колонка для симметрии
+            with col6:
+                st.write("")
+            
             # Применяем фильтры
             filtered_students = all_students.copy()
             if selected_campus != 'Все' and 'Филиал (кампус)' in filtered_students.columns:
@@ -368,6 +383,8 @@ else:
                 filtered_students = filtered_students[filtered_students['Версия образовательной программы'] == selected_program_version]
             if selected_course != 'Все' and 'Курс' in filtered_students.columns:
                 filtered_students = filtered_students[filtered_students['Курс'] == selected_course]
+            if selected_level != 'Все' and 'Уровень образования' in filtered_students.columns:
+                filtered_students = filtered_students[filtered_students['Уровень образования'] == selected_level]
             
             st.info(f"После фильтрации: {len(filtered_students)} записей из {len(all_students)}")
             
