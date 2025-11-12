@@ -1,0 +1,29 @@
+<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="400" fill="#f0f0f0"/>
+
+  <!-- Terry's body: a simple abstract line figure with arms, no lower body -->
+  <path d="M200 100 Q150 150 100 100 Q150 50 200 100 Q250 150 300 100 Q250 50 200 100" 
+        stroke="white" stroke-width="10" fill="none" 
+        filter="url(#blueGlow)"/>
+
+  <!-- Eyes -->
+  <circle cx="170" cy="90" r="5" fill="black"/>
+  <circle cx="230" cy="90" r="5" fill="black"/>
+
+  <!-- Mouth -->
+  <path d="M180 110 Q200 120 220 110" stroke="black" stroke-width="2" fill="none"/>
+
+  <!-- Blue glow filter -->
+  <defs>
+    <filter id="blueGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
+      <feFlood flood-color="blue" flood-opacity="0.5" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>
