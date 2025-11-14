@@ -121,7 +121,8 @@ def load_student_io_from_supabase() -> pd.DataFrame:
         offset = 0
         
         while True:
-            response = supabase.table('student_io').select('Адрес электронной почты, Наименование дисциплины, Оценка').range(offset, offset + page_size - 1).execute()
+            # Используем точные имена колонок из базы данных, заключенные в двойные кавычки
+            response = supabase.table('student_io').select('"Адрес электронной почты", "Наименование дисциплины", "Оценка"').range(offset, offset + page_size - 1).execute()
             
             if response.data:
                 all_data.extend(response.data)
