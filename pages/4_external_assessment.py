@@ -266,7 +266,7 @@ def process_external_assessment(grades_df: pd.DataFrame, students_df: pd.DataFra
             ),
             on=['Адрес электронной почты', 'Наименование дисциплины'],
             how='left',
-            suffixes=('', '_from_file') # Оставляем оригинальную 'Оценка' как 'Оценка_from_file'
+            suffixes=('_from_file', '_from_io') # Используем суффиксы для различения оценок
         )
         
         # Используем combine_first для приоритета оценки из student_io
