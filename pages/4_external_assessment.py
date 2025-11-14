@@ -282,7 +282,8 @@ def process_external_assessment(grades_df: pd.DataFrame, students_df: pd.DataFra
     student_io_df = load_student_io_from_supabase()
     
     if not student_io_df.empty:
-        # Очищаем email и дисциплину в result_df для сравнения (если еще не очищены на этом этапе)
+        # Очищаем email и дисциплину в result_df для сравнения
+        # Убедимся, что они строковые и приведены к нужному формату
         result_df['Адрес электронной почты'] = result_df['Адрес электронной почты'].astype(str).str.strip().str.lower()
         result_df['Наименование дисциплины'] = result_df['Наименование дисциплины'].astype(str).str.strip()
 
@@ -290,29 +291,35 @@ def process_external_assessment(grades_df: pd.DataFrame, students_df: pd.DataFra
         # suffixes указывает, что делать с одинаковыми именами столбцов ('Оценка' в данном случае)
         # '_x' будет для оценки из result_df ('Оценка_x'), '_y' для оценки из student_io ('Оценка_y')
         merged_with_io = result_df.merge(
-            student_io_df[['Адрес электронной почты', 'Наименование дисциплины', 'Оценка']],
+            student_io_df[['Адрес электронной почты', 'Наименование дисциплины', 'Оценка']], # Выбираем нужные колонки из student_io
             on=['Адрес электронной почты', 'Наименование дисциплины'],
             how='left',
-            suffixes=('', '_io') # Изменяем суффиксы для ясности
+            suffixes=('_from_file', '_from_io') # Используем более понятные суффиксы
         )
         
-        # Создаем новую колонку 'Оценка' на основе логики: если 'Оценка_io' не NaN, берем её, иначе 'Оценка'
+        # Создаем новую колонку 'Оценка' на основе логики: если 'Оценка_from_io' не NaN, берем её, иначе 'Оценка_from_file'
         # pd.notna проверяет, что значение не NaN
-        result_df['Оценка'] = merged_with_io['Оценка_io'].where(
-            pd.notna(merged_with_io['Оценка_io']), 
-            merged_with_io['Оценка'] # Берем исходную оценку из result_df
+        merged_with_io['Оценка'] = merged_with_io['Оценка_from_io'].where(
+            pd.notna(merged_with_io['Оценка_from_io']), 
+            merged_with_io['Оценка_from_file'] # Берем оценку из исходного файла
         )
         
-        # Убираем временную колонку 'Оценка_io'
-        result_df = result_df.drop(columns=['Оценка_io'])
+        # Убираем временные колонки 'Оценка_from_file' и 'Оценка_from_io'
+        result_df = merged_with_io.drop(columns=['Оценка_from_file', 'Оценка_from_io'])
         
-        # Убираем строки, где 'Оценка' стала NaN (если таковые появились, хотя маловероятно)
-        result_df = result_df[result_df['Оценка'].notna() & (result_df['Оценка'] != '') & (result_df['Оценка'] != 'nan')]
+        # Убираем строки, где 'Оценка' стала NaN или пустой строкой после обновления
+        # Используем pd.isna() для проверки NaN и str.strip().eq('') для пустых строк
+        # Сначала убедимся, что 'Оценка' строковая, чтобы избежать ошибок при strip
+        result_df = result_df[result_df['Оценка'].astype(str).str.strip() != '']
+        result_df = result_df[result_df['Оценка'].notna()]
+        # Проверим на 'nan' как строку
+        result_df = result_df[result_df['Оценка'].astype(str).str.strip().str.lower() != 'nan']
         
-        st.success(f"Проверка завершена. Найдено {len(student_io_df)} записей в student_io.")
+        st.success(f"Проверка завершена. Найдено {len(student_io_df)} записей в student_io. Оценки обновлены при совпадении.")
     else:
         st.info("Таблица student_io пуста, используются оценки из файла.")
     # --- КОНЕЦ НОВОГО ШАГА ---
+    
     
     return result_df
 
