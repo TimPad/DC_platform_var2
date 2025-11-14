@@ -31,6 +31,7 @@ st.markdown("""
 - Переименовывает колонки в соответствии со стандартами
 - Преобразует данные из широкого в длинный формат (melt)
 - Объединяет данные с информацией о студентах из Supabase
+- Проверяет существующие оценки в `student_io` и использует их, если найдены
 - Сохраняет результаты в таблицу `peresdachi` в Supabase
 - Позволяет скачать все данные или только новые записи
 """)
@@ -108,6 +109,43 @@ def load_existing_peresdachi() -> pd.DataFrame:
             return pd.DataFrame()
     except Exception as e:
         st.warning(f"Таблица peresdachi не найдена или пуста: {str(e)}")
+        return pd.DataFrame()
+
+def load_student_io_from_supabase() -> pd.DataFrame:
+    """Загрузка данных из таблицы student_io (все записи с пагинацией)"""
+    try:
+        supabase = get_supabase_client()
+        
+        all_data = []
+        page_size = 1000
+        offset = 0
+        
+        while True:
+            response = supabase.table('student_io').select('Адрес электронной почты, Наименование дисциплины, Оценка').range(offset, offset + page_size - 1).execute()
+            
+            if response.data:
+                all_data.extend(response.data)
+                if len(response.data) < page_size:
+                    break
+                offset += page_size
+            else:
+                break
+        
+        if all_data:
+            df = pd.DataFrame(all_data)
+            # Убедимся, что email и дисциплина строковые и приведены к нижнему регистру/без пробелов для корректного сравнения
+            if 'Адрес электронной почты' in df.columns:
+                df['Адрес электронной почты'] = df['Адрес электронной почты'].astype(str).str.strip().str.lower()
+            if 'Наименование дисциплины' in df.columns:
+                df['Наименование дисциплины'] = df['Наименование дисциплины'].astype(str).str.strip()
+            if 'Оценка' in df.columns:
+                df['Оценка'] = df['Оценка'].astype(str).str.strip()
+            return df
+        else:
+            st.info("Таблица student_io пуста или не создана.")
+            return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Ошибка при загрузке данных из student_io: {str(e)}")
         return pd.DataFrame()
 
 def save_to_supabase(df: pd.DataFrame) -> bool:
@@ -237,6 +275,43 @@ def process_external_assessment(grades_df: pd.DataFrame, students_df: pd.DataFra
     result_df = result_df[result_df['Оценка'].notna()]
     result_df = result_df[result_df['Оценка'].astype(str).str.strip() != '']
     result_df = result_df[result_df['Оценка'].astype(str).str.strip() != 'nan']
+    
+    # --- НОВЫЙ ШАГ: Проверка и обновление оценок из student_io ---
+    st.info("Проверка существующих оценок в student_io...")
+    student_io_df = load_student_io_from_supabase()
+    
+    if not student_io_df.empty:
+        # Очищаем email и дисциплину в result_df для сравнения (если еще не очищены на этом этапе)
+        result_df['Адрес электронной почты'] = result_df['Адрес электронной почты'].astype(str).str.strip().str.lower()
+        result_df['Наименование дисциплины'] = result_df['Наименование дисциплины'].astype(str).str.strip()
+
+        # Сливаем с student_io по email и дисциплине, приоритет у оценки из student_io
+        # suffixes указывает, что делать с одинаковыми именами столбцов ('Оценка' в данном случае)
+        # '_x' будет для оценки из result_df ('Оценка_x'), '_y' для оценки из student_io ('Оценка_y')
+        merged_with_io = result_df.merge(
+            student_io_df[['Адрес электронной почты', 'Наименование дисциплины', 'Оценка']],
+            on=['Адрес электронной почты', 'Наименование дисциплины'],
+            how='left',
+            suffixes=('', '_io') # Изменяем суффиксы для ясности
+        )
+        
+        # Создаем новую колонку 'Оценка' на основе логики: если 'Оценка_io' не NaN, берем её, иначе 'Оценка'
+        # pd.notna проверяет, что значение не NaN
+        result_df['Оценка'] = merged_with_io['Оценка_io'].where(
+            pd.notna(merged_with_io['Оценка_io']), 
+            merged_with_io['Оценка'] # Берем исходную оценку из result_df
+        )
+        
+        # Убираем временную колонку 'Оценка_io'
+        result_df = result_df.drop(columns=['Оценка_io'])
+        
+        # Убираем строки, где 'Оценка' стала NaN (если таковые появились, хотя маловероятно)
+        result_df = result_df[result_df['Оценка'].notna() & (result_df['Оценка'] != '') & (result_df['Оценка'] != 'nan')]
+        
+        st.success(f"Проверка завершена. Найдено {len(student_io_df)} записей в student_io.")
+    else:
+        st.info("Таблица student_io пуста, используются оценки из файла.")
+    # --- КОНЕЦ НОВОГО ШАГА ---
     
     return result_df
 
