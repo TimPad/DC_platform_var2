@@ -12,7 +12,7 @@ from openai import OpenAI
 # =============================================================================
 LOGO_URL = "https://raw.githubusercontent.com/TimPad/html/main/DC_green.svg"
 
-HTML_TEMPLATE_DATALENS = f"""<!DOCTYPE html>
+HTML_TEMPLATE_DATALENS = """<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -106,7 +106,6 @@ HTML_TEMPLATE_DATALENS = f"""<!DOCTYPE html>
   </div>
 </body>
 </html>"""
-
 
 SYSTEM_MESSAGE = (
     "Вы — эксперт по оформлению официальных рассылок НИУ ВШЭ. "
