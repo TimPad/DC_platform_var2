@@ -12,29 +12,26 @@ from openai import OpenAI
 # =============================================================================
 LOGO_URL = "https://datalens.yandex.ru/static/images/logo-white.svg"
 
-HTML_EXAMPLE = f"""<div style="font-family: 'YS Text', 'Helvetica Neue', Arial, sans-serif; max-width: 720px; margin: 40px auto; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.07); border: 1px solid #e8e8e8; overflow: hidden;">
-    <div style="background: linear-gradient(135deg, #006eff 0%, #0051cc 100%); color: white; padding: 32px 40px; text-align: center;">
+HTML_EXAMPLE = f"""<div style="font-family: 'Inter', 'Segoe UI', Roboto, Arial, sans-serif; max-width: 860px; margin: 40px auto; background: #ffffff; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.08); border: 1px solid #e5ebf8; overflow: hidden;">
+    <div style="background: #00256c; color: white; padding: 28px 32px; text-align: center;">
         <img src="{LOGO_URL}" alt="Логотип Data Culture" style="height: 48px; margin-bottom: 16px;">
-        <p><span style="font-size: 32px; font-weight: 700; letter-spacing: -0.5px;">ЗАГОЛОВОК ОБЪЯВЛЕНИЯ</span></p>
-        <p style="margin-top: 12px; font-size: 17px; line-height: 1.55; opacity: 0.95;">Краткое введение или контекст.</p>
+        <p><span style="font-size: 1.6em; font-weight: 700;">ЗАГОЛОВОК ОБЪЯВЛЕНИЯ</span></p>
+        <p style="margin-top: 8px; line-height: 1.5;">Краткое введение или контекст.</p>
     </div>
-    <div style="padding: 40px 40px 32px; color: #1a1a1a; line-height: 1.65; font-size: 16px;">
-        <p style="margin: 0 0 28px; font-size: 17px; color: #333;">Основной текст объявления...</p>
-        <h3 style="color: #000; font-size: 22px; font-weight: 600; margin: 32px 0 16px;">Подзаголовок</h3>
-        <ul style="margin: 16px 0 28px 24px; padding-left: 4px; color: #333;">
-            <li style="margin-bottom: 12px; position: relative;">Пункт списка</li>
+    <div style="padding: 28px 32px; color: #111827; line-height: 1.65;">
+        <p>Основной текст объявления...</p>
+        <h3 style="color: #00256c;">Подзаголовок</h3>
+        <ul style="margin: 12px 0 22px 22px;">
+            <li>Пункт списка</li>
         </ul>
-        <div style="background: #f8f9fc; border-radius: 16px; padding: 24px 28px; margin: 32px 0;">
-            <p style="margin: 0; line-height: 1.6; color: #333;">Информационный блок</p>
+        <div style="background: #f4f6fb; border-radius: 10px; padding: 16px 20px; margin: 16px 0;">
+            <p>Информационный блок</p>
         </div>
-        <div style="background: #fff8e1; border-left: 4px solid #f59e0b; padding: 16px 20px; border-radius: 12px; margin: 28px 0;">
-            <p style="margin: 0; font-weight: 600; color: #92400e; font-size: 15px;">Warning: Внимание! Важное уточнение.</p>
+        <div style="background: #fff8e1; border-left: 4px solid #f59e0b; padding: 14px 18px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="margin: 0; font-weight: 600; color: #92400e;">⚠️ Внимание! Важное уточнение.</p>
         </div>
-        <div style="background: #f0fdf4; border-left: 4px solid #16a34a; padding: 18px 22px; border-radius: 12px; margin-top: 28px;">
-            <p style="margin: 0; font-size: 17px;"><strong>Удачи!</strong> Success</p>
-        </div>
-        <div style="text-align: center; margin: 40px 0 10px;">
-            <a href="#" style="display: inline-block; background: #006eff; color: white; font-weight: 600; font-size: 17px; padding: 16px 48px; border-radius: 12px; text-decoration: none; box-shadow: 0 6px 16px rgba(0,110,255,0.25);">Узнать больше</a>
+        <div style="background: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px 20px; border-radius: 8px;">
+            <p style="margin: 4px 0 0;"><strong>Удачи!</strong> 🚀</p>
         </div>
     </div>
 </div>"""
