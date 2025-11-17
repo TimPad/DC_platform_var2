@@ -10,8 +10,7 @@ from openai import OpenAI
 # =============================================================================
 # КОНСТАНТЫ
 # =============================================================================
-LOGO_URL = "https://datalens.yandex.ru/static/images/logo-white.svg"
-
+LOGO_URL = "https://raw.githubusercontent.com/TimPad/html/main/DC_green.svg"
 HTML_EXAMPLE = f"""
 <div style="
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
