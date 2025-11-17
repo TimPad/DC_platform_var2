@@ -13,154 +13,137 @@ from openai import OpenAI
 LOGO_URL = "https://datalens.yandex.ru/static/images/logo-white.svg"
 
 HTML_EXAMPLE = f"""
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-:root {{
-  --max-w: 860px;
-  --radius: 16px;
-  --primary: #00256c;
-  --text: #111827;
-  --success: #16a34a;
-  --warning: #f59e0b;
-  --gray-bg: #f4f6fb;
-  --success-bg: #f0fdf4;
-  --warning-bg: #fff8e1;
-}}
+<div style="
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    max-width: 860px;
+    margin: 40px auto;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,27,82,0.08), 0 4px 10px rgba(0,27,82,0.04);
+    border: 1px solid #e2e8f5;
+    overflow: hidden;
+    container-type: inline-size;">
+  
+  <!-- Хедер -->
+  <header style="
+    background: linear-gradient(135deg, #001a57 0%, #00256c 100%);
+    color: #ffffff;
+    padding: 40px 32px 32px;
+    text-align: center;">
+    
+    <img src="{LOGO_URL}" 
+         alt="Логотип Data Culture" 
+         width="180" height="52"
+         loading="lazy"
+         style="height: 52px; width: auto; margin-bottom: 20px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">
+    
+    <h1 style="
+      margin: 0 0 12px;
+      font-size: clamp(1.8rem, 5vw, 2.5rem);
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: -0.02em;">
+      ЗАГОЛОВОК ОБЪЯВЛЕНИЯ
+    </h1>
+    
+    <p style="
+      margin: 0;
+      font-size: 1.15rem;
+      opacity: 0.95;
+      line-height: 1.5;
+      max-width: 640px;
+      margin-left: auto;
+      margin-right: auto;">
+      Краткое введение или контекст, которое сразу цепляет внимание.
+    </p>
+  </header>
 
-.email-wrapper {{
-  font-family: 'Inter', 'Segoe UI', Roboto, Arial, sans-serif;
-  background: #f9fafb;
-  padding: 24px 0;
-}}
+  <!-- Основное содержимое -->
+  <article style="
+    padding: 40px 32px;
+    color: #1f2937;
+    font-size: 1.06rem;
+    line-height: 1.7;">
+    
+    <p style="margin-top: 0;">
+      Основной текст объявления с чёткой структурой и достаточными отступами для комфортного чтения.
+    </p>
 
-.email-card {{
-  max-width: var(--max-w);
-  margin: 0 auto;
-  background: white;
-  border-radius: var(--radius);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.07);
-  border: 1px solid #e5ebf8;
-  overflow: hidden;
-}}
+    <h2 style="
+      margin: 32px 0 16px;
+      color: #001a57;
+      font-size: 1.5rem;
+      font-weight: 700;">
+      Подзаголовок
+    </h2>
 
-.header {{
-  background: var(--primary);
-  color: white;
-  text-align: center;
-  padding: clamp(24px, 6vw, 40px) 32px;
-}}
+    <ul style="
+      margin: 18px 0 28px;
+      padding-left: 28px;
+      list-style: none;">
+      <li style="position: relative; padding-left: 12px; margin-bottom: 10px;">
+        <span style="
+          position: absolute;
+          left: 0;
+          top: 0.15em;
+          color: #2563eb;
+          font-weight: 900;">▹</span>
+        Пункт списка с современным маркером вместо стандартного кружка
+      </li>
+      <li style="position: relative; padding-left: 12px; margin-bottom: 10px;">
+        <span style="position: absolute; left: 0; top: 0.15em; color: #2563eb; font-weight: 900;">▹</span>
+        Ещё один пункт — выглядит свежо и выделяется
+      </li>
+    </ul>
 
-.header img {{
-  height: 48px;
-  margin-bottom: 16px;
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-}}
-
-.title {{
-  font-size: clamp(1.7rem, 5vw, 2.1rem);
-  font-weight: 700;
-  margin: 0 0 8px 0;
-  line-height: 1.2;
-}}
-
-.subtitle {{
-  font-size: clamp(1.05rem, 3vw, 1.15rem);
-  opacity: 0.95;
-  margin: 0;
-  line-height: 1.5;
-}}
-
-.content {{
-  padding: clamp(24px, 6vw, 36px);
-  color: var(--text);
-  line-height: 1.65;
-}}
-
-.content h3 {{
-  color: var(--primary);
-  font-size: 1.35rem;
-  margin: 28px 0 12px;
-}}
-
-.content ul {{
-  padding-left: 22px;
-  margin: 16px 0;
-}}
-
-.info-box {{
-  background: var(--gray-bg);
-  border-radius: var(--radius-sm);
-  padding: 18px 22px;
-  margin: 20px 0;
-}}
-
-.warning-box {{
-  background: var(--warning-bg);
-  border-left: 5px solid var(--warning);
-  padding: 16px 20px;
-  border-radius: 0 8px 8px 0;
-  margin: 24px 0;
-}}
-
-.warning-box p {{
-  margin: 0;
-  font-weight: 600;
-  color: #92400e;
-}}
-
-.success-box {{
-  background: var(--success-bg);
-  border-left: 5px solid var(--success);
-  padding: 18px 22px;
-  border-radius: 0 8px 8px 0;
-  margin: 24px 0;
-}}
-
-@media (max-width: 600px) {{
-  .header, .content {{ padding-left: 20px; padding-right: 20px; }}
-}}
-</style>
-</head>
-<body class="email-wrapper">
-  <div class="email-card">
-    <div class="header">
-      <img src="{LOGO_URL}" alt="Логотип Data Culture">
-      <h1 class="title">ЗАГОЛОВОК ОБЪЯВЛЕНИЯ</h1>
-      <p class="subtitle">Краткое введение или контекст, которое объясняет суть.</p>
+    <!-- Информационный блок -->
+    <div style="
+      background: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%);
+      border: 1px solid #dbe4ff;
+      border-radius: 14px;
+      padding: 24px;
+      margin: 28px 0;
+      box-shadow: 0 2px 8px rgba(0,50,140,0.04);">
+      <p style="margin: 0; font-size: 1.02rem; color: #1e40af;">
+        <strong>ℹ️ Важная информация</strong><br>
+        Этот блок привлекает внимание мягким градиентом и лёгкой тенью.
+      </p>
     </div>
 
-    <div class="content">
-      <p>Основной текст объявления. Делаем его чуть более живым и человечным.</p>
+    <!-- Блок предупреждения -->
+    <aside style="
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-left: 6px solid #f59e0b;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 28px 0;
+      box-shadow: 0 4px 12px rgba(245,158,11,0.1);">
+      <p style="
+        margin: 0;
+        font-weight: 700;
+        color: #92400e;
+        font-size: 1.05rem;">
+        ⚠️ Внимание! Важное уточнение, которое нельзя пропустить.
+      </p>
+    </aside>
 
-      <h3>Что изменилось / Что нужно сделать</h3>
-      <ul>
-        <li>Первый важный пункт</li>
-        <li>Второй пункт с пояснением</li>
-        <li>Третий пункт</li>
-      </ul>
-
-      <div class="info-box">
-        <p><strong>Полезная информация или ссылка:</strong><br>
-        <a href="#" style="color:var(--primary); text-decoration:underline;">Перейти →</a></p>
-      </div>
-
-      <div class="warning-box">
-        <p>⚠️ Внимание! До 25 ноября нужно обязательно сделать Х, иначе будет Y.</p>
-      </div>
-
-      <div class="success-box">
-        <p>Удачи в новом сезоне! 🚀<br>Команда Data Culture</p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
+    <!-- Блок успеха / мотивации -->
+    <aside style="
+      background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+      border: 1px solid #86efac;
+      border-radius: 14px;
+      padding: 24px;
+      text-align: center;
+      font-size: 1.15rem;
+      box-shadow: 0 4px 15px rgba(34,197,94,0.12);">
+      <p style="margin: 0; color: #166534;">
+        <strong>Удачи в проекте!</strong> 🚀<br>
+        <span style="font-size: 0.95em; opacity: 0.9;">Команда Data Culture всегда с вами</span>
+      </p>
+    </aside>
+  </article>
+</div>
 """
 
 SYSTEM_MESSAGE = (
