@@ -12,38 +12,29 @@ from openai import OpenAI
 # =============================================================================
 LOGO_URL = "https://datalens.yandex.ru/static/images/logo-white.svg"
 
-HTML_EXAMPLE = = f"""<div style="font-family: 'YS Text', 'Helvetica Neue', Arial, sans-serif; max-width: 720px; margin: 32px auto; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.07); overflow: hidden; border: 1px solid #e8e8e8;">
-    <!-- Шапка как у DataLens -->
-    <div style="background: linear-gradient(135deg, #006eff 0%, #0051cc 100%); color: white; padding: 32px 40px; text-align: center; border-radius: 20px 20px 0 0;">
-        <h1 style="font-size: 32px; font-weight: 700; margin: 0; letter-spacing: -0.5px;">Yandex DataLens</h1>
+HTML_EXAMPLE = f"""<div style="font-family: 'YS Text', 'Helvetica Neue', Arial, sans-serif; max-width: 720px; margin: 40px auto; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.07); border: 1px solid #e8e8e8; overflow: hidden;">
+    <div style="background: linear-gradient(135deg, #006eff 0%, #0051cc 100%); color: white; padding: 32px 40px; text-align: center;">
+        <img src="{LOGO_URL}" alt="Логотип Data Culture" style="height: 48px; margin-bottom: 16px;">
+        <p><span style="font-size: 32px; font-weight: 700; letter-spacing: -0.5px;">ЗАГОЛОВОК ОБЪЯВЛЕНИЯ</span></p>
+        <p style="margin-top: 12px; font-size: 17px; line-height: 1.55; opacity: 0.95;">Краткое введение или контекст.</p>
     </div>
-
-    <!-- Основной контент -->
     <div style="padding: 40px 40px 32px; color: #1a1a1a; line-height: 1.65; font-size: 16px;">
-        <h2 style="font-size: 28px; font-weight: 700; margin: 0 0 16px 0; color: #000;">Здравствуйте!</h2>
-        <p style="margin: 0 0 24px 0; color: #555;">Спасибо, что используете Yandex DataLens.<br>1 декабря этого года в сервисе произойдут важные изменения.</p>
-
-        <!-- Что изменится -->
-        <h3 style="font-size: 22px; font-weight: 600; margin: 32px 0 16px 0; color: #000;">Что изменится</h3>
+        <p style="margin: 0 0 28px; font-size: 17px; color: #333;">Основной текст объявления...</p>
+        <h3 style="color: #000; font-size: 22px; font-weight: 600; margin: 32px 0 16px;">Подзаголовок</h3>
         <ul style="margin: 16px 0 28px 24px; padding-left: 4px; color: #333;">
-            <li style="margin-bottom: 12px; position: relative;">Мы откроем все возможности Yandex DataLens, в том числе AI-ассистента Нейроаналитика, для бесплатной индивидуальной работы.</li>
-            <li style="margin-bottom: 12px;">Работать в команде можно будет только на платном тарифе.<br>Вы сможете управлять количеством рабочих мест и назначать их на конкретных пользователей.</li>
-            <li style="margin-bottom: 0;">С 1 декабря тариф Community станет недоступен. Все текущие окружения будут переведены на пробный период тарифа Business до 1 марта 2026 года.</li>
+            <li style="margin-bottom: 12px; position: relative;">Пункт списка</li>
         </ul>
-
-        <!-- Специальные условия (серый блок как на скриншоте) -->
         <div style="background: #f8f9fc; border-radius: 16px; padding: 24px 28px; margin: 32px 0;">
-            <h3 style="font-size: 20px; font-weight: 600; margin: 0 0 12px 0; color: #000;">Специальные условия</h3>
-            <p style="margin: 0; color: #333; line-height: 1.6;">
-                Для текущих пользователей тарифа Community действует скидка 50% на все рабочие места сроком на год. 
-                Для того чтобы зафиксировать скидку, достаточно активировать платный тариф до конца 2025 года.<br><br>
-                Подробнее рассказываем в нашем блоге.
-            </p>
+            <p style="margin: 0; line-height: 1.6; color: #333;">Информационный блок</p>
         </div>
-
-        <!-- Кнопка -->
-        <div style="text-align: center; margin: 40px 0 16px;">
-            <a href="#" style="display: inline-block; background: #006eff; color: white; font-weight: 600; font-size: 17px; padding: 16px 40px; border-radius: 12px; text-decoration: none; box-shadow: 0 4px 12px rgba(0,110,255,0.3);">Узнать больше</a>
+        <div style="background: #fff8e1; border-left: 4px solid #f59e0b; padding: 16px 20px; border-radius: 12px; margin: 28px 0;">
+            <p style="margin: 0; font-weight: 600; color: #92400e; font-size: 15px;">Warning: Внимание! Важное уточнение.</p>
+        </div>
+        <div style="background: #f0fdf4; border-left: 4px solid #16a34a; padding: 18px 22px; border-radius: 12px; margin-top: 28px;">
+            <p style="margin: 0; font-size: 17px;"><strong>Удачи!</strong> Success</p>
+        </div>
+        <div style="text-align: center; margin: 40px 0 10px;">
+            <a href="#" style="display: inline-block; background: #006eff; color: white; font-weight: 600; font-size: 17px; padding: 16px 48px; border-radius: 12px; text-decoration: none; box-shadow: 0 6px 16px rgba(0,110,255,0.25);">Узнать больше</a>
         </div>
     </div>
 </div>"""
