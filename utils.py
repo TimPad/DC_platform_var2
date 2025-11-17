@@ -10,7 +10,6 @@ from openai import OpenAI
 # =============================================================================
 # КОНСТАНТЫ
 # =============================================================================
-
 LOGO_URL = "https://raw.githubusercontent.com/TimPad/html/main/DC_green.svg"
 
 HTML_TEMPLATE_DATALENS = f"""<!DOCTYPE html>
@@ -18,21 +17,77 @@ HTML_TEMPLATE_DATALENS = f"""<!DOCTYPE html>
 <head>
   <meta charset="utf-8">
   <style>
-    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f5f7fa; padding: 40px 20px; }}
-    .card {{ max-width: 860px; margin: 0 auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.08); border: 1px solid #e5ebf8; overflow: hidden; }}
-    .header {{ background: linear-gradient(135deg, #0066ff, #0050cc); color: white; padding: 32px 40px; }}
-    .header img {{ height: 42px; margin-bottom: 16px; }}
-    .header h1 {{ margin: 0 0 12px 0; font-size: 28px; font-weight: 700; }}
-    .header p {{ margin: 0; opacity: 0.95; line-height: 1.5; }}
-    .body {{ padding: 40px 40px 48px; color: #1a1a1a; line-height: 1.65; }}
-    .body h3 {{ font-size: 20px; margin: 32px 0 16px; color: #000; }}
-    .body ul {{ padding-left: 24px; margin: 16px 0; }}
-    .body li {{ margin-bottom: 10px; }}
-    .info-block {{ background: #f8f9ff; border-radius: 12px; padding: 20px 24px; margin: 24px 0; }}
-    .warning-block {{ background: #fff8e1; border-left: 4px solid #f59e0b; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 24px 0; }}
-    .warning-block strong {{ color: #92400e; }}
-    .success-block {{ background: #f0fdf4; border-left: 4px solid #16a34a; padding: 20px 24px; border-radius: 0 8px 8px 0; margin: 28px 0 0; }}
-    .cta-button {{ display: inline-block; background: #0066ff; color: white; font-weight: 600; padding: 14px 32px; border-radius: 8px; text-decoration: none; margin-top: 32px; }}
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f5f7fa;
+      padding: 40px 20px;
+      margin: 0;
+    }}
+    .card {{
+      max-width: 860px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+      border: 1px solid #e5ebf8;
+      overflow: hidden;
+    }}
+    .header {{
+      background: linear-gradient(135deg, #0066ff, #0050cc);
+      color: white;
+      padding: 32px 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }}
+    .header img {{
+      height: 42px;
+    }}
+    .header h1 {{
+      margin: 0;
+      font-size: 28px;
+      font-weight: 700;
+    }}
+    .body {{
+      padding: 40px 40px 48px;
+      color: #1a1a1a;
+      line-height: 1.65;
+    }}
+    .section {{
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 24px;
+      border: 1px solid #e5ebf8;
+    }}
+    .section h2 {{
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 0;
+      margin-bottom: 16px;
+      color: #000;
+    }}
+    .section p {{
+      margin: 0 0 16px 0;
+    }}
+    .section ul {{
+      padding-left: 24px;
+      margin: 16px 0;
+    }}
+    .section li {{
+      margin-bottom: 10px;
+    }}
+    .cta-button {{
+      display: inline-block;
+      background: #0066ff;
+      color: white;
+      font-weight: 600;
+      padding: 14px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      margin-top: 32px;
+      text-align: center;
+    }}
   </style>
 </head>
 <body>
@@ -40,10 +95,12 @@ HTML_TEMPLATE_DATALENS = f"""<!DOCTYPE html>
     <div class="header">
       <img src="{{logo_url}}" alt="Yandex DataLens">
       <h1>{{title}}</h1>
-      <p>{{subtitle}}</p>
     </div>
     <div class="body">
+      <!-- Основной контент будет вставлен здесь -->
       {{{body_content}}}
+      
+      <!-- Кнопка CTA -->
       <a href="{{button_url}}" class="cta-button">{{button_text}}</a>
     </div>
   </div>
