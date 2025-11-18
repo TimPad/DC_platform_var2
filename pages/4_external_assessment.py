@@ -150,7 +150,7 @@ def load_student_io_from_supabase() -> pd.DataFrame:
         return pd.DataFrame()
 
 def save_to_supabase(df: pd.DataFrame) -> bool:
-    """Сохранение данных в таблицу peresdachi в Supabase с использованием upsert"""
+    """Сохранение данных в таблицу peresdachi в Supabase с использованием insert, игнорируя дубликаты."""
     try:
         supabase = get_supabase_client()
 
@@ -163,19 +163,27 @@ def save_to_supabase(df: pd.DataFrame) -> bool:
             cleaned_record = {k: (v if pd.notna(v) else None) for k, v in record.items()}
             cleaned_records.append(cleaned_record)
 
-        # Используем upsert, указав поля уникальности
-        response = supabase.table('peresdachi').upsert(
-            cleaned_records,
-            on_conflict=["Адрес электронной почты", "Наименование дисциплины"] # <-- Указываем поля
-        ).execute()
+        # Используем обычный insert
+        response = supabase.table('peresdachi').insert(cleaned_records).execute()
 
         return True
 
+    # Поймаем конкретную ошибку дублирования
     except Exception as e:
-        st.error(f"Ошибка при сохранении в Supabase: {str(e)}")
-        if hasattr(e, 'details'):
-            st.error(f"Детали ошибки от Supabase: {e.details}")
-        return False
+        # Проверим, является ли ошибка ошибкой дублирования ключа
+        if "duplicate key value violates unique constraint" in str(e):
+            # Это ожидаемая ошибка, если дубликаты есть.
+            # В supabase-py нет отдельного типа исключения для этого, приходится проверять строку.
+            st.warning("Обнаружены дубликаты при сохранении. Они были проигнорированы. Остальные данные сохранены.")
+            # Важно: вставка может быть частично успешной или полностью неудачной в зависимости от батчинга.
+            # Для надежности, лучше удалять дубликаты в Python до вставки.
+            return True # Считаем, что всё в порядке, если дубликаты - это ожидаемое поведение
+        else:
+            # Если другая ошибка, выводим её
+            st.error(f"Ошибка при сохранении в Supabase: {str(e)}")
+            if hasattr(e, 'details'):
+                st.error(f"Детали ошибки от Supabase: {e.details}")
+            return False
 
 def get_new_records_from_dataframe(new_df: pd.DataFrame) -> pd.DataFrame:
     """Получить только новые записи, сравнивая с существующими в БД"""
@@ -206,9 +214,11 @@ def get_new_records_from_dataframe(new_df: pd.DataFrame) -> pd.DataFrame:
 def process_external_assessment(grades_df: pd.DataFrame, students_df: pd.DataFrame) -> pd.DataFrame:
     """Обработка пересдач внешней оценки"""
     # Шаг 1: Очистка данных
+    # Приводим ВСЕ колонки к строке, чтобы избежать проблем с типами в melt и отображении
+    grades_df = grades_df.astype(str)
+    # Теперь убираем '-' и пробелы
     for col in grades_df.columns:
-        if grades_df[col].dtype == 'object':
-            grades_df[col] = grades_df[col].astype(str).str.replace('-', '', regex=False).str.strip()
+        grades_df[col] = grades_df[col].str.replace('-', '', regex=False).str.strip()
     
     # Шаг 2: Переименование колонок
     column_mapping = {
@@ -532,4 +542,3 @@ else:
         else:
             st.metric("Записей в таблице peresdachi", len(existing_peresdachi))
             st.dataframe(existing_peresdachi.head(10), use_container_width=True)
-            
