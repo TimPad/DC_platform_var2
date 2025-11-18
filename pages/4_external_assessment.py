@@ -295,7 +295,7 @@ def process_external_assessment(grades_df: pd.DataFrame, students_df: pd.DataFra
     result_df = result_df[result_df['Оценка'].astype(str).str.strip() != '']
     result_df = result_df[result_df['Оценка'].astype(str).str.strip() != 'nan']
     
-    # --- НОВЫЙ ШАГ: Проверка и обновление оценок из student_io ---
+    # --- ШАГ 1: Проверка и обновление оценок из student_io ---
     st.info("Проверка существующих оценок в student_io...")
     student_io_df = load_student_io_from_supabase()
     
@@ -336,7 +336,45 @@ def process_external_assessment(grades_df: pd.DataFrame, students_df: pd.DataFra
         st.success(f"Проверка завершена. Найдено {len(student_io_df)} записей в student_io. Оценки обновлены при совпадении.")
     else:
         st.info("Таблица student_io пуста, используются оценки из файла.")
-    # --- КОНЕЦ НОВОГО ШАГА ---
+    # --- КОНЕЦ ШАГ 1 ---
+    
+    # --- ШАГ 2: Проверка существующих оценок в peresdachi ---
+    st.info("Проверка существующих оценок в peresdachi...")
+    existing_peresdachi_df = load_existing_peresdachi()
+    
+    if not existing_peresdachi_df.empty:
+        # Очищаем данные в existing_peresdachi для корректного сравнения
+        if 'Адрес электронной почты' in existing_peresdachi_df.columns:
+            existing_peresdachi_df['Адрес электронной почты'] = existing_peresdachi_df['Адрес электронной почты'].astype(str).str.strip().str.lower()
+        if 'Наименование дисциплины' in existing_peresdachi_df.columns:
+            existing_peresdachi_df['Наименование дисциплины'] = existing_peresdachi_df['Наименование дисциплины'].astype(str).str.strip()
+        
+        # Сливаем с peresdachi по email и дисциплине, приоритет у оценки из peresdachi
+        merged_with_peresdachi = result_df.merge(
+            existing_peresdachi_df[['Адрес электронной почты', 'Наименование дисциплины', 'Оценка']],
+            on=['Адрес электронной почты', 'Наименование дисциплины'],
+            how='left',
+            suffixes=('_current', '_peresdachi')
+        )
+        
+        # Создаем новую колонку 'Оценка': если есть оценка в peresdachi, берем её, иначе текущую
+        merged_with_peresdachi['Оценка'] = merged_with_peresdachi['Оценка_peresdachi'].where(
+            pd.notna(merged_with_peresdachi['Оценка_peresdachi']),
+            merged_with_peresdachi['Оценка_current']
+        )
+        
+        # Убираем временные колонки
+        result_df = merged_with_peresdachi.drop(columns=['Оценка_current', 'Оценка_peresdachi'])
+        
+        # Убираем строки с пустыми оценками
+        result_df = result_df[result_df['Оценка'].astype(str).str.strip() != '']
+        result_df = result_df[result_df['Оценка'].notna()]
+        result_df = result_df[result_df['Оценка'].astype(str).str.strip().str.lower() != 'nan']
+        
+        st.success(f"Проверка peresdachi завершена. Найдено {len(existing_peresdachi_df)} записей. Оценки обновлены при совпадении.")
+    else:
+        st.info("Таблица peresdachi пуста, используются текущие оценки.")
+
     
     
     return result_df
@@ -447,7 +485,7 @@ if grades_file:
 
                         # Сохранение в Supabase
                         with st.spinner("Сохранение в Supabase..."):
-                            save_success = save_to_supabase(result_df)
+                            save_success = save_to_supabase(display_new_records)
                             if save_success:
                                 st.success(f"Сохранено в Supabase: {new_count} новых записей из {total_count} (после удаления дубликатов из исходного набора).")
                             else:
