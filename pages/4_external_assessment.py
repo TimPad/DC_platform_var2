@@ -1,6 +1,6 @@
 """
 Модуль 4: Обработка пересдач внешней оценки
-Supabase интеграция (оптимизированная версия)
+Supabase интеграция (финальная стабильная версия)
 """
 import streamlit as st
 import pandas as pd
@@ -8,30 +8,27 @@ import io
 from datetime import datetime
 from utils import icon, apply_custom_css, get_supabase_client
 
-# Стили и заголовок
+# === Стили и заголовок ===
 apply_custom_css()
 st.markdown(f'<h1>{icon("file-edit", 32)} Обработка пересдач внешней оценки</h1>', unsafe_allow_html=True)
 st.markdown("""
 Автоматическая обработка пересдач из внешней системы оценивания с интеграцией Supabase.
-
 **Требуется:** файл с оценками (до 1000 строк)  
 **Что делает инструмент:**
 - Очищает и преобразует данные
-- Объединяет со списком студентов из Supabase
+- Объединяет со списком студентов
 - Приоритет оценок: `student_io` → файл
 - Сохраняет в `peresdachi` через upsert (без дублирования)
-- Скачивание всех обработанных данных
 """)
 
-# === Универсальная загрузка из Supabase с кэшем ===
-@st.cache_data(ttl=3600, show_spinner="Загрузка данных из Supabase...")
+# === Универсальная загрузка с кэшем ===
+@st.cache_data(ttl=3600, show_spinner="Загрузка из Supabase...")
 def fetch_all(table: str, filters: dict = None, columns: str = "*"):
     supabase = get_supabase_client()
-    query = supabase.table(table).select(columns, count='exact')
+    query = supabase.table(table).select(columns)
     if filters:
         for k, v in filters.items():
             query = query.eq(k, v)
-    
     data = []
     offset = 0
     while True:
@@ -46,7 +43,7 @@ def fetch_all(table: str, filters: dict = None, columns: str = "*"):
 
 # === Проверка подключения ===
 try:
-    get_supabase_client().table('students').select('id', count='exact').limit(1).execute()
+    get_supabase_client().table('students').select('id', limit=1).execute()
     st.success("Подключение к Supabase установлено")
 except Exception as e:
     st.error(f"Ошибка подключения к Supabase: {e}")
@@ -55,16 +52,14 @@ except Exception as e:
 st.markdown("---")
 
 # === Загрузка файла ===
-st.subheader("Загрузка файла с оценками")
 grades_file = st.file_uploader(
-    "Выберите файл (xlsx)",
+    "Загрузите файл с оценками (xlsx)",
     type=['xlsx', 'xls'],
-    help="Обязательные колонки: 'Адрес электронной почты' и колонки с 'Тест:... (Значение)'"
+    help="Должны быть колонки: 'Адрес электронной почты' и 'Тест:... (Значение)'"
 )
 
 if not grades_file:
     st.info("Загрузите файл с оценками для начала работы")
-    
     with st.expander("Текущее состояние таблицы peresdachi"):
         current = fetch_all('peresdachi')
         if current.empty:
@@ -74,42 +69,38 @@ if not grades_file:
             st.dataframe(current.head(10), use_container_width=True)
     st.stop()
 
-# === Чтение и валидация файла ===
+# === Только здесь мы читаем файл — после проверки, что он есть ===
 try:
     grades_df = pd.read_excel(grades_file)
-    st.success(f"Файл загружен: {len(grades_df)} строк")
+    st.success(f"Файл загружен: {len(grades_df)} строк × {len(grades_df.columns)} колонок")
 except Exception as e:
     st.error(f"Не удалось прочитать файл: {e}")
     st.stop()
 
-# Проверка обязательных колонок
-required_base = ['Адрес электронной почты']
+# Проверка колонок с тестами
 test_cols = [col for col in grades_df.columns if 'Тест:' in col and '(Значение)' in col]
 if not test_cols:
     st.error("Не найдено колонок вида 'Тест:... (Значение)'")
     st.stop()
 
-# === Предпросмотр ===
-col1, col2 = st.columns(2)
-with col1:
-    with st.expander("Предпросмотр загруженного файла"):
-        st.dataframe(grades_df.head(10), use_container_width=True)
-with col2:
-    st.metric("Строк в файле", len(grades_df))
-    st.metric("Тестовых колонок найдено", len(test_cols))
+# Предпросмотр
+with st.expander("Предпросмотр загруженного файла", expanded=True):
+    st.dataframe(grades_df.head(10), use_container_width=True)
 
-# === Кнопка обработки (вне условий — не сбрасывается) ===
+st.metric("Найдено тестовых колонок", len(test_cols))
+
+# === КНОПКА ОБРАБОТКИ ===
 if st.button("Обработать данные и сохранить в Supabase", type="primary", use_container_width=True):
-    with st.spinner("Обработка данных..."):
+    with st.spinner("Идёт обработка..."):
         
-        # 1. Загрузка студентов
+        # 1. Студенты
         students_df = fetch_all('students', filters={'курс': 'Курс 4'})
         if students_df.empty:
-            st.error("Нет студентов на Курсе 4 в таблице `students`")
+            st.error("Нет студентов на Курсе 4")
             st.stop()
         st.info(f"Загружено студентов: {len(students_df)}")
 
-        # 2. Переименование колонок дисциплин
+        # 2. Маппинг дисциплин
         DISCIPLINE_MAPPING = {
             'Тест:Входное тестирование (Значение)': 'Внешнее измерение цифровых компетенций. Входной контроль',
             'Тест:Промежуточное тестирование (Значение)': 'Внешнее измерение цифровых компетенций. Промежуточный контроль',
@@ -117,10 +108,10 @@ if st.button("Обработать данные и сохранить в Supabas
         }
         grades_df = grades_df.rename(columns=DISICIPLINE_MAPPING)
 
-        # 3. Melt в длинный формат
+        # 3. Melt
         value_cols = [v for k, v in DISCIPLINE_MAPPING.items() if k in grades_df.columns]
         if not value_cols:
-            st.error("Не удалось сопоставить колонки тестирований")
+            st.error("Не удалось сопоставить ни одну колонку тестирования")
             st.stop()
 
         melted = pd.melt(
@@ -132,20 +123,18 @@ if st.button("Обработать данные и сохранить в Supabas
         )
 
         # Очистка
-        melted = melted[melted['Оценка'].notna()]
+        melted = melted[melted['Оценка'].notna() & (melted['Оценка'].astype(str).str.strip() != '')]
         melted['Оценка'] = melted['Оценка'].astype(str).str.replace('-', '').str.strip()
-        melted = melted[melted['Оценка'].str.len() > 0]
         melted['Адрес электронной почты'] = melted['Адрес электронной почты'].str.strip().str.lower()
 
-        # 4. Присоединение данных студентов
-        students_df['Адрес электронной почты'] = students_df['корпоративная_почта'].str.strip().str.lower()
+        # 4. Присоединяем студентов
+        students_df['Адрес электронной почты'] = students_df['корпоративная_почта'].astype(str).str.strip().str.lower()
         result = melted.merge(
-            students_df[['Адрес электронной почты', 'фио', 'филиал_кампус', 'факультет', 
+            students_df[['Адрес электронной почты', 'фио', 'филиал_кампус', 'факультет',
                          'образовательная_программа', 'группа']],
             on='Адрес электронной почты',
             how='left'
-        )
-        result = result.rename(columns={
+        ).rename(columns={
             'фио': 'ФИО',
             'филиал_кампус': 'Кампус',
             'факультет': 'Факультет',
@@ -153,22 +142,19 @@ if st.button("Обработать данные и сохранить в Supabas
             'группа': 'Группа'
         })
 
-        # 5. Приоритет оценок из student_io
+        # 5. Приоритет из student_io
         student_io = fetch_all('student_io', columns='"Адрес электронной почты", "Наименование дисциплины", "Оценка"')
         if not student_io.empty:
             student_io['Адрес электронной почты'] = student_io['Адрес электронной почты'].astype(str).str.strip().str.lower()
             student_io['Наименование дисциплины'] = student_io['Наименование дисциплины'].astype(str).str.strip()
-            student_io['Оценка'] = student_io['Оценка'].astype(str).str.strip()
+            key_map = dict(zip(
+                student_io['Адрес электронной почты'] + '|' + student_io['Наименование дисциплины'],
+                student_io['Оценка']
+            ))
+            result_key = result['Адрес электронной почты'] + '|' + result['Наименование дисциплины']
+            result['Оценка'] = result_key.map(key_map).fillna(result['Оценка'])
 
-            result['key'] = result['Адрес электронной почты'] + '|' + result['Наименование дисциплины']
-            student_io['key'] = student_io['Адрес электронной почты'] + '|' + student_io['Наименование дисциплины']
-
-            io_dict = dict(zip(student_io['key'], student_io['Оценка']))
-            result['Оценка'] = result['key'].map(io_dict).fillna(result['Оценка'])
-            result.drop('key', axis=1, inplace=True)
-            st.success(f"Применены оценки из student_io для {len(io_dict)} совпадений")
-
-        # 6. Финальные колонки
+        # 6. Финальные поля
         result['ID дисциплины'] = ''
         result['Период аттестации'] = ''
         result['Курс'] = 'Курс 4'
@@ -178,44 +164,38 @@ if st.button("Обработать данные и сохранить в Supabas
                       'Наименование дисциплины', 'Период аттестации', 'Оценка']
         result = result[[c for c in final_cols if c in result.columns]]
 
-        # === Сохранение в Supabase ===
-        with st.spinner("Сохранение в Supabase (upsert)..."):
-            supabase = get_supabase_client()
-            records = result.to_dict('records')
-            # Замена NaN на None для Supabase
-            records = [{k: (v if pd.notna(v) else None) for k, v in r.items()} for r in records]
-
-            response = supabase.table('peresdachi') \
+        # === Сохранение ===
+        with st.spinner("Сохранение в Supabase..."):
+            records = [{k: (v if pd.notna(v) else None) for k, v in r.items()} 
+                      for r in result.to_dict('records')]
+            get_supabase_client().table('peresdachi') \
                 .upsert(records, on_conflict=['Адрес электронной почты', 'Наименование дисциплины']) \
                 .execute()
+            st.success(f"Успешно сохранено/обновлено {len(result)} записей!")
 
-            st.success(f"Успешно сохранено/обновлено {len(result)} записей в таблицу `peresdachi`")
-
-        # === Результаты ===
+        # === Результат ===
         st.balloons()
-        st.subheader("Готово! Результат обработки")
-        st.metric("Обработано и сохранено записей", len(result))
+        st.subheader("Готово!")
+        st.metric("Обработано записей", len(result))
 
-        tab1, tab2 = st.tabs(["Все записи", "Статистика"])
-
+        tab1, tab2 = st.tabs(["Данные", "Статистика"])
         with tab1:
             st.dataframe(result, use_container_width=True)
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                 result.to_excel(writer, index=False, sheet_name='Пересдачи')
-            output.seek(0)
+            buffer.seek(0)
             st.download_button(
-                "Скачать результат (XLSX)",
-                data=output.getvalue(),
+                "Скачать результат",
+                data=buffer.getvalue(),
                 file_name=f"Пересдачи_{datetime.now():%d-%m-%Y}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-
         with tab2:
             col1, col2 = st.columns(2)
             with col1:
-                st.write("По дисциплинам:")
+                st.write("По дисциплинам")
                 st.bar_chart(result['Наименование дисциплины'].value_counts())
             with col2:
-                st.write("По кампусам:")
+                st.write("По кампусам")
                 st.bar_chart(result['Кампус'].value_counts().head(10))
