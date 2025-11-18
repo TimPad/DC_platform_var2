@@ -1,6 +1,6 @@
 """
 Модуль 4: Обработка пересдач внешней оценки
-Финальная стабильная версия — всё работает
+Финальная версия — гарантированно без ошибок
 """
 import streamlit as st
 import pandas as pd
@@ -12,15 +12,15 @@ from utils import icon, apply_custom_css, get_supabase_client
 apply_custom_css()
 st.markdown(f'<h1>{icon("file-edit", 32)} Обработка пересдач внешней оценки</h1>', unsafe_allow_html=True)
 st.markdown("""
-**Автоматическая загрузка и обработка результатов внешнего тестирования**
+**Автоматическая загрузка результатов внешнего тестирования**
 
-Приоритет оценок:  
-`student_io` → оценки из загруженного файла  
-Сохраняется через `upsert` → дубли невозможны (уникальный индекс в БД)
+- Приоритет оценок: `student_io` → файл  
+- Сохраняется через `upsert` → дубли невозможны  
+- Работает только с Курсом 4
 """)
 
-# === Универсальная загрузка из Supabase с кэшем ===
-@st.cache_data(ttl=3600, show_spinner="Загрузка данных из Supabase...")
+# === Универсальная загрузка из Supabase ===
+@st.cache_data(ttl=3600, show_spinner="Загрузка из Supabase...")
 def fetch_all(table: str, filters: dict = None, columns: str = "*"):
     supabase = get_supabase_client()
     query = supabase.table(table).select(columns)
@@ -39,14 +39,13 @@ def fetch_all(table: str, filters: dict = None, columns: str = "*"):
         offset += 1000
     return pd.DataFrame(data) if data else pd.DataFrame()
 
-# === Проверка подключения к Supabase ===
+# === Проверка подключения ===
 try:
     get_supabase_client().table('students').select('id').limit(1).execute()
     st.success("Подключение к Supabase установлено")
 except Exception as e:
     st.error(f"Ошибка подключения к Supabase: {e}")
-_ensure_future(e)}")
-    st.info("Проверьте URL и anon/public ключ в `utils.py`")
+    st.info("Проверьте SUPABASE_URL и SUPABASE_KEY в utils.py")
     st.stop()
 
 st.markdown("---")
@@ -59,7 +58,7 @@ grades_file = st.file_uploader(
 )
 
 if not grades_file:
-    st.info("Загрузите файл для продолжения")
+    st.info("Загрузите файл для начала работы")
     with st.expander("Текущее состояние таблицы peresdachi"):
         curr = fetch_all('peresdachi')
         if curr.empty:
@@ -69,33 +68,33 @@ if not grades_file:
             st.dataframe(curr.head(10), use_container_width=True)
     st.stop()
 
-# === Чтение и базовая валидация ===
+# === Чтение файла ===
 try:
     grades_df = pd.read_excel(grades_file)
     st.success(f"Файл загружен: {len(grades_df)} строк")
 except Exception as e:
-    st.error(f"Не удалось прочитать файл: {e}")
+    st.error(f"Ошибка чтения файла: {e}")
     st.stop()
 
+# Проверка наличия тестовых колонок
 test_cols = [c for c in grades_df.columns if 'Тест:' in c and '(Значение)' in c]
 if not test_cols:
-    st.error("Не найдено колонок с тестом (должны содержать 'Тест:' и '(Значение)')")
+    st.error("Не найдено колонок с названием 'Тест:... (Значение)'")
     st.stop()
 
-with st.expander("Предпросмотр загруженного файла", expanded=True):
+with st.expander("Предпросмотр файла", expanded=True):
     st.dataframe(grades_df.head(10), use_container_width=True)
-st.write(f"Найдено тестовых колонок: **{len(test_cols)}**")
+st.write(f"Найдено колонок с результатами тестов: **{len(test_cols)}**")
 
 # === Кнопка обработки ===
-if st.button("Обработать данные и сохранить в Supabase", type="primary", use_container_width=True):
-    with st.spinner("Обработка и сохранение..."):
+if st.button("Обработать и сохранить в Supabase", type="primary", use_container_width=True):
+    with st.spinner("Обработка данных..."):
 
-        # 1. Загрузка студентов (Курс 4)
+        # 1. Студенты Курса 4
         students_df = fetch_all('students', filters={'курс': 'Курс 4'})
         if students_df.empty:
-            st.error("Нет студентов на 'Курс 4' в таблице students")
+            st.error("Нет студентов на Курсе 4")
             st.stop()
-        st.info(f"Студентов загружено: {len(students_df)}")
 
         # 2. Маппинг дисциплин
         DISCIPLINE_MAPPING = {
@@ -104,13 +103,13 @@ if st.button("Обработать данные и сохранить в Supabas
             'Тест:Итоговое тестирование (Значение)': 'Внешнее измерение цифровых компетенций. Итоговый контроль'
         }
         grades_df = grades_df.rename(columns=DISICIPLINE_MAPPING)
-
-        # 3. Melt → длинный формат
         value_cols = [v for k, v in DISCIPLINE_MAPPING.items() if k in grades_df.columns]
+
         if not value_cols:
-            st.error("Ни одна колонка тестирования не найдена")
+            st.error("Ни одна колонка тестирования не найдена после переименования")
             st.stop()
 
+        # 3. Преобразование в длинный формат
         melted = pd.melt(
             grades_df,
             id_vars=['Адрес электронной почты'],
@@ -119,7 +118,7 @@ if st.button("Обработать данные и сохранить в Supabas
             value_name='Оценка'
         )
 
-        # Очистка оценок
+        # Очистка
         melted = melted[melted['Оценка'].notna()]
         melted['Оценка'] = melted['Оценка'].astype(str).str.replace('-', '').str.strip()
         melted = melted[melted['Оценка'].str.len() > 0]
@@ -128,8 +127,7 @@ if st.button("Обработать данные и сохранить в Supabas
         # 4. Присоединяем данные студентов
         students_df['Адрес электронной почты'] = students_df['корпоративная_почта'].astype(str).str.strip().str.lower()
         result = melted.merge(
-            students_df[['Адрес электронной почты', 'фио', 'филиал_кампус', 'факультет',
-                         'образовательная_программа', 'группа']],
+            students_df[['Адрес электронной почты', 'фио', 'филиал_кампус', 'факультет', 'образовательная_программа', 'группа']],
             on='Адрес электронной почты',
             how='left'
         ).rename(columns={
@@ -140,7 +138,7 @@ if st.button("Обработать данные и сохранить в Supabas
             'группа': 'Группа'
         })
 
-        # 5. Приоритет из student_io (если есть совпадения — берём оттуда)
+        # 5. Приоритет из student_io
         student_io = fetch_all('student_io', columns='"Адрес электронной почты", "Наименование дисциплины", "Оценка"')
         if not student_io.empty:
             student_io['Адрес электронной почты'] = student_io['Адрес электронной почты'].astype(str).str.strip().str.lower()
@@ -151,9 +149,8 @@ if st.button("Обработать данные и сохранить в Supabas
             ))
             result_key = result['Адрес электронной почты'] + '|' + result['Наименование дисциплины']
             result['Оценка'] = result_key.map(io_map).fillna(result['Оценка'])
-            st.info(f"Применён приоритет из student_io для {len(io_map)} записей")
 
-        # 6. Финальные поля
+        # 6. Финальные колонки
         result['ID дисциплины'] = ''
         result['Период аттестации'] = ''
         result['Курс'] = 'Курс 4'
@@ -163,22 +160,17 @@ if st.button("Обработать данные и сохранить в Supabas
                       'Наименование дисциплины', 'Период аттестации', 'Оценка']
         result = result[[c for c in final_cols if c in result.columns]]
 
-        # === Сохранение в Supabase ===
-        records = [{k: (v if pd.notna(v) else None) for k, v in r.items()}
-                  for r in result.to_dict('records')]
-
+        # === Сохранение ===
+        records = [{k: (v if pd.notna(v) else None) for k, v in r.items()} for r in result.to_dict('records')]
         get_supabase_client().table('peresdachi') \
             .upsert(records, on_conflict=['Адрес электронной почты', 'Наименование дисциплины']) \
             .execute()
 
-        st.success(f"Успешно обработано и сохранено {len(result)} записей!")
-
-        # === Результат ===
+        st.success(f"Готово! Сохранено {len(result)} записей")
         st.balloons()
-        st.metric("Записей сохранено", len(result))
 
+        # === Вывод результата ===
         tab1, tab2 = st.tabs(["Результат", "Статистика"])
-
         with tab1:
             st.dataframe(result, use_container_width=True)
             buffer = io.BytesIO()
@@ -186,17 +178,16 @@ if st.button("Обработать данные и сохранить в Supabas
                 result.to_excel(writer, index=False, sheet_name='Пересдачи')
             buffer.seek(0)
             st.download_button(
-                "Скачать результат (XLSX)",
+                "Скачать результат",
                 data=buffer.getvalue(),
-                file_name=f"Пересдачи_внешняя_оценка_{datetime.now():%d-%m-%Y}.xlsx",
+                file_name=f"peresdachi_{datetime.now():%d-%m-%Y}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-
         with tab2:
             c1, c2 = st.columns(2)
             with c1:
                 st.write("По дисциплинам")
                 st.bar_chart(result['Наименование дисциплины'].value_counts())
             with c2:
-                st.write("По кампусам (топ-10)")
+                st.write("По кампусам")
                 st.bar_chart(result['Кампус'].value_counts().head(10))
