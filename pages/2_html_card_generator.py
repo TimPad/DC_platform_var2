@@ -58,14 +58,12 @@ def generate_hse_html(client, user_text: str) -> str:
     if not isinstance(parsed, dict):
         raise ValueError("Ответ не является объектом JSON.")
 
-    if parsed.get("type") != "HTML":
-        raise ValueError("Поле 'type' должно быть 'HTML'.")
-
-    content = parsed.get("content")
-    if not isinstance(content, str) or not content.strip():
-        raise ValueError("Поле 'content' отсутствует или пустое.")
-
-    return content.strip()
+    # Новый формат: {"html": "..."}
+    html_content = parsed.get("html")
+    if not isinstance(html_content, str) or not html_content.strip():
+        raise ValueError("Поле 'html' отсутствует или пустое.")
+    
+    return html_content.strip()
 
 # Проверка наличия API ключа
 try:
