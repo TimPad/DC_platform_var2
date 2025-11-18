@@ -25,7 +25,7 @@ def fetch_all(table: str, filters: dict = None, columns: str = "*"):
     offset = 0
     while True:
         resp = query.range(offset, offset + 999).execute()
-        if not resp.data:
+        if not resp.
             break
         data.extend(resp.data)
         if len(resp.data) < 1000:
@@ -296,123 +296,149 @@ if grades_file:
 
             # --- ЗАГРУЗКА СТУДЕНТОВ С ПОМОЩЬЮ НОВОЙ ФУНКЦИИ ---
             with st.spinner("Загрузка списка студентов из Supabase..."):
+                # Загружаем только нужные колонки, или все, если не знаем наверняка
+                # Для надёжности загрузим все и переименуем
                 students_df = fetch_all('students', filters={'курс': 'Курс 4'})
-            
+
+            # --- ПЕРЕИМЕНОВАНИЕ КОЛОНОК СТУДЕНТОВ ---
+            # Проверим, есть ли вообще какие-то данные
             if students_df.empty:
                 st.error("Список студентов пуст. Загрузите данные в таблицу `students` в Supabase.")
-                # Не используем st.stop() здесь, а просто выходим из блока
             else:
-                st.success(f"Загружено {len(students_df)} студентов из Supabase")
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Записей с оценками", len(grades_df))
-            with col2:
-                st.metric("Студентов в базе", len(students_df))
-            with col3:
-                st.metric("Колонок в оценках", len(grades_df.columns))
-            
-            col_preview1, col_preview2 = st.columns(2)
-            with col_preview1:
-                with st.expander("Предпросмотр файла с оценками"):
-                    st.dataframe(grades_df.head(), use_container_width=True)
-            
-            with col_preview2:
-                with st.expander("Предпросмотр списка студентов"):
-                    st.dataframe(students_df.head(10), use_container_width=True)
-            
-            # --- ОБНОВЛЁННЫЙ БЛОК ОБРАБОТКИ ---
-            if process_triggered: # Условие теперь зависит от отдельной переменной
-                with st.spinner("Обработка пересдач..."):
-                    try:
-                        result_df = process_external_assessment(grades_df, students_df)
-                        
-                        if result_df.empty:
-                            st.error("Не удалось обработать данные. Проверьте структуру файла.")
-                        else:
-                            st.success("Обработка успешно завершена!")
-                            
-                            # --- УБРАНА ФУНКЦИЯ get_new_records_from_dataframe ---
-                            # Определяем общее количество записей
-                            total_count = len(result_df)
-                            
-                            # Сохранение в Supabase
-                            with st.spinner("Сохранение в Supabase..."):
-                                save_success = save_to_supabase(result_df)
-                                if save_success:
-                                    st.success(f"Данные успешно отправлены в Supabase (upsert).")
-                                else:
-                                    st.error("Ошибка при сохранении данных в Supabase")
-                                    # Не используем st.stop() здесь, просто прерываем дальнейшую логику
-                                    st.stop() # Останавливаем выполнение после ошибки
-                            
-                            # Статистика
-                            st.subheader("Результаты обработки")
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.metric("Записей обработано и отправлено", total_count)
-                            with col2:
-                                st.info("Дубли автоматически обновляются благодаря уникальному индексу в базе")
-                            
-                            # Предпросмотр
-                            tab1, tab2 = st.tabs(["Все обработанные данные", "Только новые записи"])
-                            
-                            with tab1:
-                                st.dataframe(result_df, use_container_width=True)
-                                
-                                output_all = io.BytesIO()
-                                with pd.ExcelWriter(output_all, engine='openpyxl') as writer:
-                                    result_df.to_excel(writer, index=False, sheet_name='Все пересдачи')
-                                output_all.seek(0)
-                                
-                                current_date = datetime.now().strftime('%d-%m-%Y')
-                                download_filename_all = f"Пересдачи_все_{current_date}.xlsx"
-                                
-                                st.download_button(
-                                    label="Скачать все записи (XLSX)",
-                                    data=output_all.getvalue(),
-                                    file_name=download_filename_all,
-                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                    key="download_all"
-                                )
-                            
-                            with tab2:
-                                # Показываем информацию о новизне
-                                st.info("Точное количество новых записей можно увидеть только после сохранения (Supabase не возвращает счётчик при upsert)")
-                                st.dataframe(result_df, use_container_width=True) # Показываем все, как пример
-                                    
-                                # Кнопка для новых записей не имеет смысла без точного подсчёта
-                                # output_new = io.BytesIO()
-                                # with pd.ExcelWriter(output_new, engine='openpyxl') as writer:
-                                #     display_new_records.to_excel(writer, index=False, sheet_name='Новые пересдачи')
-                                # output_new.seek(0)
-                                # download_filename_new = f"Пересдачи_новые_{current_date}.xlsx"
-                                # st.download_button(
-                                #     label="Скачать только новые записи (XLSX)",
-                                #     data=output_new.getvalue(),
-                                #     file_name=download_filename_new,
-                                #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                #     key="download_new"
-                                # )
-                            
-                            # Дополнительная статистика
-                            with st.expander("Статистика по обработке"):
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    st.write("**Распределение по дисциплинам:**")
-                                    if 'Наименование дисциплины' in result_df.columns:
-                                        discipline_counts = result_df['Наименование дисциплины'].value_counts()
-                                        st.dataframe(discipline_counts)
-                                
-                                with col2:
-                                    st.write("**Уникальные студенты:**")
-                                    if 'ФИО' in result_df.columns:
-                                        unique_students = result_df['ФИО'].nunique()
-                                        st.metric("Уникальных студентов", unique_students)
+                # Определяем соответствие
+                column_mapping = {
+                    'корпоративная_почта': 'Адрес электронной почты',
+                    'фио': 'ФИО',
+                    'филиал_кампус': 'Филиал (кампус)',
+                    'факультет': 'Факультет',
+                    'образовательная_программа': 'Образовательная программа',
+                    'версия_образовательной_программы': 'Версия образовательной программы',
+                    'группа': 'Группа',
+                    'курс': 'Курс'
+                }
+
+                # Переименовываем только те колонки, которые существуют в загруженном DataFrame
+                existing_columns = {k: v for k, v in column_mapping.items() if k in students_df.columns}
+                students_df = students_df.rename(columns=existing_columns)
+
+                # Проверяем, есть ли теперь нужные колонки
+                required_student_cols = ['ФИО', 'Адрес электронной почты', 'Факультет', 'Группа', 'Курс'] # Добавьте нужные
+                missing_student_cols = [col for col in required_student_cols if col not in students_df.columns]
+                if missing_student_cols:
+                    st.error(f"Отсутствуют колонки в таблице студентов после переименования: {missing_student_cols}")
+                    st.dataframe(students_df.head()) # Показать, что загрузилось
+                else:
+                    st.success(f"Загружено {len(students_df)} студентов из Supabase")
                     
-                    except Exception as e:
-                        st.error(f"Ошибка при обработке: {str(e)}")
-                        st.exception(e)
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Записей с оценками", len(grades_df))
+                    with col2:
+                        st.metric("Студентов в базе", len(students_df))
+                    with col3:
+                        st.metric("Колонок в оценках", len(grades_df.columns))
+                    
+                    col_preview1, col_preview2 = st.columns(2)
+                    with col_preview1:
+                        with st.expander("Предпросмотр файла с оценками"):
+                            st.dataframe(grades_df.head(), use_container_width=True)
+                    
+                    with col_preview2:
+                        with st.expander("Предпросмотр списка студентов"):
+                            st.dataframe(students_df.head(10), use_container_width=True)
+                    
+                    # --- ОБНОВЛЁННЫЙ БЛОК ОБРАБОТКИ ---
+                    if process_triggered: # Условие теперь зависит от отдельной переменной
+                        with st.spinner("Обработка пересдач..."):
+                            try:
+                                result_df = process_external_assessment(grades_df, students_df)
+                                
+                                if result_df.empty:
+                                    st.error("Не удалось обработать данные. Проверьте структуру файла.")
+                                else:
+                                    st.success("Обработка успешно завершена!")
+                                    
+                                    # --- УБРАНА ФУНКЦИЯ get_new_records_from_dataframe ---
+                                    # Определяем общее количество записей
+                                    total_count = len(result_df)
+                                    
+                                    # Сохранение в Supabase
+                                    with st.spinner("Сохранение в Supabase..."):
+                                        save_success = save_to_supabase(result_df)
+                                        if save_success:
+                                            st.success(f"Данные успешно отправлены в Supabase (upsert).")
+                                        else:
+                                            st.error("Ошибка при сохранении данных в Supabase")
+                                            # Не используем st.stop() здесь, просто прерываем дальнейшую логику
+                                            st.stop() # Останавливаем выполнение после ошибки
+                                    
+                                    # Статистика
+                                    st.subheader("Результаты обработки")
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        st.metric("Записей обработано и отправлено", total_count)
+                                    with col2:
+                                        st.info("Дубли автоматически обновляются благодаря уникальному индексу в базе")
+                                    
+                                    # Предпросмотр
+                                    tab1, tab2 = st.tabs(["Все обработанные данные", "Только новые записи"])
+                                    
+                                    with tab1:
+                                        st.dataframe(result_df, use_container_width=True)
+                                        
+                                        output_all = io.BytesIO()
+                                        with pd.ExcelWriter(output_all, engine='openpyxl') as writer:
+                                            result_df.to_excel(writer, index=False, sheet_name='Все пересдачи')
+                                        output_all.seek(0)
+                                        
+                                        current_date = datetime.now().strftime('%d-%m-%Y')
+                                        download_filename_all = f"Пересдачи_все_{current_date}.xlsx"
+                                        
+                                        st.download_button(
+                                            label="Скачать все записи (XLSX)",
+                                            data=output_all.getvalue(),
+                                            file_name=download_filename_all,
+                                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                            key="download_all"
+                                        )
+                                    
+                                    with tab2:
+                                        # Показываем информацию о новизне
+                                        st.info("Точное количество новых записей можно увидеть только после сохранения (Supabase не возвращает счётчик при upsert)")
+                                        st.dataframe(result_df, use_container_width=True) # Показываем все, как пример
+                                            
+                                        # Кнопка для новых записей не имеет смысла без точного подсчёта
+                                        # output_new = io.BytesIO()
+                                        # with pd.ExcelWriter(output_new, engine='openpyxl') as writer:
+                                        #     display_new_records.to_excel(writer, index=False, sheet_name='Новые пересдачи')
+                                        # output_new.seek(0)
+                                        # download_filename_new = f"Пересдачи_новые_{current_date}.xlsx"
+                                        # st.download_button(
+                                        #     label="Скачать только новые записи (XLSX)",
+                                        #     data=output_new.getvalue(),
+                                        #     file_name=download_filename_new,
+                                        #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                        #     key="download_new"
+                                        # )
+                                    
+                                    # Дополнительная статистика
+                                    with st.expander("Статистика по обработке"):
+                                        col1, col2 = st.columns(2)
+                                        with col1:
+                                            st.write("**Распределение по дисциплинам:**")
+                                            if 'Наименование дисциплины' in result_df.columns:
+                                                discipline_counts = result_df['Наименование дисциплины'].value_counts()
+                                                st.dataframe(discipline_counts)
+                                        
+                                        with col2:
+                                            st.write("**Уникальные студенты:**")
+                                            if 'ФИО' in result_df.columns:
+                                                unique_students = result_df['ФИО'].nunique()
+                                                st.metric("Уникальных студентов", unique_students)
+                            
+                            except Exception as e:
+                                st.error(f"Ошибка при обработке: {str(e)}")
+                                st.exception(e)
 
     except Exception as e:
         st.error(f"Ошибка при загрузке файла: {str(e)}")
