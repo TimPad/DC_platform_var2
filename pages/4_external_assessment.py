@@ -25,7 +25,7 @@ def fetch_all(table: str, filters: dict = None, columns: str = "*"):
     offset = 0
     while True:
         resp = query.range(offset, offset + 999).execute()
-        if not resp.
+        if not resp.data
             break
         data.extend(resp.data)
         if len(resp.data) < 1000:
