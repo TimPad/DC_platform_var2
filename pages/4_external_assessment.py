@@ -177,12 +177,6 @@ def save_to_supabase(df: pd.DataFrame) -> bool:
             st.error(f"Детали ошибки от Supabase: {e.details}")
         return False
 
-    except Exception as e:
-        st.error(f"Ошибка при сохранении в Supabase: {str(e)}")
-        if hasattr(e, 'details'):
-            st.error(f"Детали ошибки от Supabase: {e.details}")
-        return False
-
 def get_new_records_from_dataframe(new_df: pd.DataFrame) -> pd.DataFrame:
     """Получить только новые записи, сравнивая с существующими в БД"""
     try:
@@ -360,19 +354,19 @@ if grades_file:
     try:
         with st.spinner("Загрузка файла с оценками..."):
             grades_df = pd.read_excel(grades_file)
-        
+
         st.success("Файл с оценками успешно загружен!")
-        
+
         # Загрузка студентов из Supabase
         with st.spinner("Загрузка списка студентов из Supabase..."):
             students_df = load_students_from_supabase()
-        
+
         if students_df.empty:
             st.error("Список студентов пуст. Загрузите данные в таблицу `students` в Supabase.")
             st.stop()
         else:
             st.success(f"Загружено {len(students_df)} студентов из Supabase")
-        
+
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Записей с оценками", len(grades_df))
@@ -380,66 +374,101 @@ if grades_file:
             st.metric("Студентов в базе", len(students_df))
         with col3:
             st.metric("Колонок в оценках", len(grades_df.columns))
-        
+
         col_preview1, col_preview2 = st.columns(2)
         with col_preview1:
             with st.expander("Предпросмотр файла с оценками"):
                 st.dataframe(grades_df.head(), use_container_width=True)
-        
+
         with col_preview2:
             with st.expander("Предпросмотр списка студентов"):
                 st.dataframe(students_df.head(10), use_container_width=True)
-        
+
         if st.button("Обработать данные", type="primary", key="process_btn"):
             with st.spinner("Обработка пересдач..."):
                 try:
                     result_df = process_external_assessment(grades_df, students_df)
-                    
+
                     if result_df.empty:
                         st.error("Не удалось обработать данные. Проверьте структуру файла.")
                     else:
                         st.success("Обработка успешно завершена!")
-                        
-                        # Определяем новые записи ДО сохранения в БД
-                        with st.spinner("Определение новых записей..."):
-                            display_new_records = get_new_records_from_dataframe(result_df)
-                            new_count = len(display_new_records)
-                            total_count = len(result_df)
-                        
+
+                        # Определяем новые записи ДО удаления дубликатов (для отображения до очистки)
+                        # Но используем их только после очистки
+                        display_new_records_uncleaned = get_new_records_from_dataframe(result_df)
+                        new_count_uncleaned = len(display_new_records_uncleaned)
+                        total_count_uncleaned = len(result_df)
+
+                        # Проверка и удаление дубликатов В result_df ПЕРЕД сохранением
+                        with st.spinner("Проверка и удаление дубликатов в данных для сохранения..."):
+                            conflict_cols = ["Адрес электронной почты", "Наименование дисциплины"]
+                            initial_count_result = len(result_df)
+                            # Удаляем дубликаты в result_df по ключевым полям
+                            result_df_cleaned = result_df.drop_duplicates(subset=conflict_cols, keep='first')
+                            final_count_result = len(result_df_cleaned)
+                            duplicates_removed_result = initial_count_result - final_count_result
+                            if duplicates_removed_result > 0:
+                                st.warning(f"Найдено и удалено {duplicates_removed_result} дубликатов в наборе данных для сохранения (result_df).")
+                                # Обновляем result_df, с которым будем работать дальше
+                                result_df = result_df_cleaned
+                                # Также пересчитываем display_new_records на основе очищенного result_df
+                                display_new_records = get_new_records_from_dataframe(result_df)
+                                new_count = len(display_new_records)
+                                total_count = len(result_df) # Общее количество тоже обновляется, если были дубликаты
+                            else:
+                                st.info("Дубликатов в наборе данных для сохранения (result_df) не обнаружено.")
+                                # Если дубликатов не было, используем изначальные значения
+                                display_new_records = display_new_records_uncleaned
+                                new_count = new_count_uncleaned
+                                total_count = total_count_uncleaned
+
+                            # Проверим, есть ли дубликаты в display_new_records (хотя маловероятно, если get_new_records_from_dataframe корректен)
+                            # Используем уже potentially обновлённый display_new_records
+                            initial_count_new = len(display_new_records)
+                            display_new_records_cleaned = display_new_records.drop_duplicates(subset=conflict_cols, keep='first')
+                            final_count_new = len(display_new_records_cleaned)
+                            duplicates_removed_new = initial_count_new - final_count_new
+                            if duplicates_removed_new > 0:
+                                st.warning(f"Найдено и удалено {duplicates_removed_new} дубликатов в наборе 'новых' записей перед сохранением.")
+                                display_new_records = display_new_records_cleaned
+                                new_count = len(display_new_records) # Пересчитываем количество новых
+
+
                         # Сохранение в Supabase
                         with st.spinner("Сохранение в Supabase..."):
                             save_success = save_to_supabase(result_df)
                             if save_success:
-                                st.success(f"Сохранено в Supabase: {new_count} новых записей из {total_count}")
+                                st.success(f"Сохранено в Supabase: {new_count} новых записей из {total_count} (после удаления дубликатов из исходного набора).")
                             else:
                                 st.error("Ошибка при сохранении данных в Supabase")
                                 st.stop()  # Прерываем, если не удалось сохранить
-                        
-                        # Статистика
-                        st.subheader("Результаты обработки")
+
+                        # Статистика (обновляется с учётом удаления дубликатов)
+                        st.subheader("Результаты обработки (после удаления дубликатов)")
                         col1, col2, col3 = st.columns(3)
                         with col1:
-                            st.metric("Всего обработано записей", total_count)
+                            st.metric("Всего обработано (без дублей)", total_count)
                         with col2:
-                            st.metric("Новых записей", new_count)
+                            st.metric("Новых записей (без дублей)", new_count)
                         with col3:
                             existing_count = total_count - new_count
                             st.metric("Уже существовало", existing_count)
-                        
+
                         # Предпросмотр
                         tab1, tab2 = st.tabs(["Все обработанные данные", "Только новые записи"])
-                        
+
                         with tab1:
                             st.dataframe(result_df, use_container_width=True)
-                            
+
                             output_all = io.BytesIO()
                             with pd.ExcelWriter(output_all, engine='openpyxl') as writer:
                                 result_df.to_excel(writer, index=False, sheet_name='Все пересдачи')
                             output_all.seek(0)
-                            
+
                             current_date = datetime.now().strftime('%d-%m-%Y')
                             download_filename_all = f"Пересдачи_все_{current_date}.xlsx"
-                            
+
                             st.download_button(
                                 label="Скачать все записи (XLSX)",
                                 data=output_all.getvalue(),
@@ -447,20 +476,20 @@ if grades_file:
                                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                 key="download_all"
                             )
-                        
+
                         with tab2:
                             if display_new_records.empty:
                                 st.info("Новых записей нет. Все данные уже были в базе.")
                             else:
                                 st.dataframe(display_new_records, use_container_width=True)
-                                
+
                                 output_new = io.BytesIO()
                                 with pd.ExcelWriter(output_new, engine='openpyxl') as writer:
                                     display_new_records.to_excel(writer, index=False, sheet_name='Новые пересдачи')
                                 output_new.seek(0)
-                                
+
                                 download_filename_new = f"Пересдачи_новые_{current_date}.xlsx"
-                                
+
                                 st.download_button(
                                     label="Скачать только новые записи (XLSX)",
                                     data=output_new.getvalue(),
@@ -468,7 +497,7 @@ if grades_file:
                                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                     key="download_new"
                                 )
-                        
+
                         # Дополнительная статистика
                         with st.expander("Статистика по обработке"):
                             col1, col2 = st.columns(2)
@@ -477,17 +506,17 @@ if grades_file:
                                 if 'Наименование дисциплины' in result_df.columns:
                                     discipline_counts = result_df['Наименование дисциплины'].value_counts()
                                     st.dataframe(discipline_counts)
-                            
+
                             with col2:
                                 st.write("**Уникальные студенты:**")
                                 if 'ФИО' in result_df.columns:
                                     unique_students = result_df['ФИО'].nunique()
                                     st.metric("Уникальных студентов", unique_students)
-                
+
                 except Exception as e:
                     st.error(f"Ошибка при обработке: {str(e)}")
                     st.exception(e)
-    
+
     except Exception as e:
         st.error(f"Ошибка при загрузке файла: {str(e)}")
         st.exception(e)
@@ -503,3 +532,4 @@ else:
         else:
             st.metric("Записей в таблице peresdachi", len(existing_peresdachi))
             st.dataframe(existing_peresdachi.head(10), use_container_width=True)
+            
