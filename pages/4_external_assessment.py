@@ -150,23 +150,38 @@ def load_student_io_from_supabase() -> pd.DataFrame:
         return pd.DataFrame()
 
 def save_to_supabase(df: pd.DataFrame) -> bool:
-    """Сохранение данных в таблицу peresdachi в Supabase"""
+    """Сохранение данных в таблицу peresdachi в Supabase с использованием upsert"""
     try:
         supabase = get_supabase_client()
-        
+
         if df.empty:
+            st.info("Нет данных для сохранения.") # Добавим информативность
             return True  # Нечего сохранять, считаем успехом
-        
+
         cleaned_records = []
         for record in df.to_dict('records'):
             cleaned_record = {k: (v if pd.notna(v) else None) for k, v in record.items()}
             cleaned_records.append(cleaned_record)
-        
-        response = supabase.table('peresdachi').insert(cleaned_records).execute()
+
+        # Используем upsert вместо insert
+        # Укажем поля, по которым определяется уникальность (conflict resolution columns)
+        # В твоём случае это "Адрес электронной почты" и "Наименование дисциплины"
+        response = supabase.table('peresdachi').upsert(
+            cleaned_records,
+            on_conflict=["Адрес электронной почты", "Наименование дисциплины"] # Указываем столбцы уникальности
+        ).execute()
+
+        # В supabase-py upsert возвращает данные, которые были вставлены или обновлены.
+        # Если нужно, можно их использовать для подсчёта.
+        # Но для простоты, если не было исключения, считаем, что успешно.
         return True
-        
+
     except Exception as e:
+        # Выводим полную ошибку для лучшей диагностики
         st.error(f"Ошибка при сохранении в Supabase: {str(e)}")
+        # Если ошибка содержит информацию из Supabase, можно её распечатать
+        if hasattr(e, 'details'):
+            st.error(f"Детали ошибки от Supabase: {e.details}")
         return False
 
 def get_new_records_from_dataframe(new_df: pd.DataFrame) -> pd.DataFrame:
