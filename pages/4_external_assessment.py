@@ -150,36 +150,31 @@ def load_student_io_from_supabase() -> pd.DataFrame:
         return pd.DataFrame()
 
 def save_to_supabase(df: pd.DataFrame) -> bool:
-    """Сохранение данных в таблицу peresdachi в Supabase с использованием upsert"""
+    """Сохранение данных в таблицу peresdachi в Supabase с использованием upsert по имени индекса"""
     try:
         supabase = get_supabase_client()
 
         if df.empty:
-            st.info("Нет данных для сохранения.") # Добавим информативность
-            return True  # Нечего сохранять, считаем успехом
+            st.info("Нет данных для сохранения.")
+            return True
 
         cleaned_records = []
         for record in df.to_dict('records'):
             cleaned_record = {k: (v if pd.notna(v) else None) for k, v in record.items()}
             cleaned_records.append(cleaned_record)
 
-        # Используем upsert вместо insert
-        # Укажем поля, по которым определяется уникальность (conflict resolution columns)
-        # В твоём случае это "Адрес электронной почты" и "Наименование дисциплины"
+        # Используем upsert, указав имя уникального индекса в on_conflict
+        # Это может быть либо uniq_peresdachi_student_discipline, либо uniq_peresdachi_student_discipline_new
+        # Попробуем сначала uniq_peresdachi_student_discipline, так как оно было изначально
         response = supabase.table('peresdachi').upsert(
             cleaned_records,
-            on_conflict=["Адрес электронной почты", "Наименование дисциплины"] # Указываем столбцы уникальности
+            on_conflict="uniq_peresdachi_student_discipline" # <-- Указываем имя индекса как строки
         ).execute()
 
-        # В supabase-py upsert возвращает данные, которые были вставлены или обновлены.
-        # Если нужно, можно их использовать для подсчёта.
-        # Но для простоты, если не было исключения, считаем, что успешно.
         return True
 
     except Exception as e:
-        # Выводим полную ошибку для лучшей диагностики
         st.error(f"Ошибка при сохранении в Supabase: {str(e)}")
-        # Если ошибка содержит информацию из Supabase, можно её распечатать
         if hasattr(e, 'details'):
             st.error(f"Детали ошибки от Supabase: {e.details}")
         return False
