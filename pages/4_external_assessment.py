@@ -150,7 +150,7 @@ def load_student_io_from_supabase() -> pd.DataFrame:
         return pd.DataFrame()
 
 def save_to_supabase(df: pd.DataFrame) -> bool:
-    """Сохранение данных в таблицу peresdachi в Supabase с использованием upsert по имени индекса"""
+    """Сохранение данных в таблицу peresdachi в Supabase с использованием upsert"""
     try:
         supabase = get_supabase_client()
 
@@ -163,15 +163,19 @@ def save_to_supabase(df: pd.DataFrame) -> bool:
             cleaned_record = {k: (v if pd.notna(v) else None) for k, v in record.items()}
             cleaned_records.append(cleaned_record)
 
-        # Используем upsert, указав имя уникального индекса в on_conflict
-        # Это может быть либо uniq_peresdachi_student_discipline, либо uniq_peresdachi_student_discipline_new
-        # Попробуем сначала uniq_peresdachi_student_discipline, так как оно было изначально
+        # Используем upsert, указав поля уникальности
         response = supabase.table('peresdachi').upsert(
             cleaned_records,
-            on_conflict="uniq_peresdachi_student_discipline" # <-- Указываем имя индекса как строки
+            on_conflict=["Адрес электронной почты", "Наименование дисциплины"] # <-- Указываем поля
         ).execute()
 
         return True
+
+    except Exception as e:
+        st.error(f"Ошибка при сохранении в Supabase: {str(e)}")
+        if hasattr(e, 'details'):
+            st.error(f"Детали ошибки от Supabase: {e.details}")
+        return False
 
     except Exception as e:
         st.error(f"Ошибка при сохранении в Supabase: {str(e)}")
