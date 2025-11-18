@@ -1,491 +1,221 @@
 """
 Модуль 4: Обработка пересдач внешней оценки
-Supabase интеграция для пересдач
+Supabase интеграция (оптимизированная версия)
 """
-
 import streamlit as st
 import pandas as pd
 import io
 from datetime import datetime
-from typing import Tuple
 from utils import icon, apply_custom_css, get_supabase_client
 
-# Применяем кастомные стили
+# Стили и заголовок
 apply_custom_css()
-
-# Заголовок страницы
-st.markdown(
-    f'<h1>{icon("file-edit", 32)} Обработка пересдач внешней оценки</h1>',
-    unsafe_allow_html=True
-)
-
+st.markdown(f'<h1>{icon("file-edit", 32)} Обработка пересдач внешней оценки</h1>', unsafe_allow_html=True)
 st.markdown("""
 Автоматическая обработка пересдач из внешней системы оценивания с интеграцией Supabase.
 
-**Требуется:**
-1. **Файл с оценками** - таблица из внешней системы с тестированиями
-2. **Список студентов** - загружается автоматически из Supabase (таблица `students`)
-
+**Требуется:** файл с оценками (до 1000 строк)  
 **Что делает инструмент:**
-- Очищает данные от лишних символов и пробелов
-- Переименовывает колонки в соответствии со стандартами
-- Преобразует данные из широкого в длинный формат (melt)
-- Объединяет данные с информацией о студентах из Supabase
-- Проверяет существующие оценки в `student_io` и использует их, если найдены
-- Сохраняет результаты в таблицу `peresdachi` в Supabase
-- Позволяет скачать все данные или только новые записи
+- Очищает и преобразует данные
+- Объединяет со списком студентов из Supabase
+- Приоритет оценок: `student_io` → файл
+- Сохраняет в `peresdachi` через upsert (без дублирования)
+- Скачивание всех обработанных данных
 """)
 
-def load_students_from_supabase() -> pd.DataFrame:
-    """Загрузка списка студентов из Supabase (все записи с пагинацией)"""
-    try:
-        supabase = get_supabase_client()
-        
-        # Загружаем все записи с пагинацией и фильтром по курсу
-        all_data = []
-        page_size = 1000
-        offset = 0
-        
-        while True:
-            response = supabase.table('students').select('*').eq('курс', 'Курс 4').range(offset, offset + page_size - 1).execute()
-            
-            if response.data:
-                all_data.extend(response.data)
-                if len(response.data) < page_size:
-                    break
-                offset += page_size
-            else:
-                break
-        
-        if all_data:
-            df = pd.DataFrame(all_data)
-            
-            # Переименование колонок из формата Supabase в требуемый формат
-            column_mapping = {
-                'корпоративная_почта': 'Адрес электронной почты',
-                'фио': 'ФИО',
-                'филиал_кампус': 'Филиал (кампус)',
-                'факультет': 'Факультет',
-                'образовательная_программа': 'Образовательная программа',
-                'версия_образовательной_программы': 'Версия образовательной программы',
-                'группа': 'Группа',
-                'курс': 'Курс'
-            }
-            
-            existing_columns = {k: v for k, v in column_mapping.items() if k in df.columns}
-            df = df.rename(columns=existing_columns)
-            
-            return df
-        else:
-            st.warning("Таблица students пуста или нет студентов на Курсе 4 в Supabase")
-            return pd.DataFrame()
-    except Exception as e:
-        st.error(f"Ошибка при загрузке студентов из Supabase: {str(e)}")
-        return pd.DataFrame()
-
-def load_existing_peresdachi() -> pd.DataFrame:
-    """Загрузка существующих записей из таблицы peresdachi"""
-    try:
-        supabase = get_supabase_client()
-        
-        all_data = []
-        page_size = 1000
-        offset = 0
-        
-        while True:
-            response = supabase.table('peresdachi').select('*').range(offset, offset + page_size - 1).execute()
-            
-            if response.data:
-                all_data.extend(response.data)
-                if len(response.data) < page_size:
-                    break
-                offset += page_size
-            else:
-                break
-        
-        if all_data:
-            return pd.DataFrame(all_data)
-        else:
-            return pd.DataFrame()
-    except Exception as e:
-        st.warning(f"Таблица peresdachi не найдена или пуста: {str(e)}")
-        return pd.DataFrame()
-
-def load_student_io_from_supabase() -> pd.DataFrame:
-    """Загрузка данных из таблицы student_io (все записи с пагинацией)"""
-    try:
-        supabase = get_supabase_client()
-        
-        all_data = []
-        page_size = 1000
-        offset = 0
-        
-        while True:
-            # Используем точные имена колонок из базы данных, заключенные в двойные кавычки
-            response = supabase.table('student_io').select('"Адрес электронной почты", "Наименование дисциплины", "Оценка"').range(offset, offset + page_size - 1).execute()
-            
-            if response.data:
-                all_data.extend(response.data)
-                if len(response.data) < page_size:
-                    break
-                offset += page_size
-            else:
-                break
-        
-        if all_data:
-            df = pd.DataFrame(all_data)
-            # Убедимся, что email и дисциплина строковые и приведены к нижнему регистру/без пробелов для корректного сравнения
-            if 'Адрес электронной почты' in df.columns:
-                df['Адрес электронной почты'] = df['Адрес электронной почты'].astype(str).str.strip().str.lower()
-            if 'Наименование дисциплины' in df.columns:
-                df['Наименование дисциплины'] = df['Наименование дисциплины'].astype(str).str.strip()
-            if 'Оценка' in df.columns:
-                df['Оценка'] = df['Оценка'].astype(str).str.strip()
-            return df
-        else:
-            st.info("Таблица student_io пуста или не создана.")
-            return pd.DataFrame()
-    except Exception as e:
-        st.error(f"Ошибка при загрузке данных из student_io: {str(e)}")
-        return pd.DataFrame()
-
-def save_to_supabase(df: pd.DataFrame) -> bool:
-    """Сохранение данных в таблицу peresdachi в Supabase"""
-    try:
-        supabase = get_supabase_client()
-        
-        if df.empty:
-            return True  # Нечего сохранять, считаем успехом
-        
-        cleaned_records = []
-        for record in df.to_dict('records'):
-            cleaned_record = {k: (v if pd.notna(v) else None) for k, v in record.items()}
-            cleaned_records.append(cleaned_record)
-        
-        response = supabase.table('peresdachi').insert(cleaned_records).execute()
-        return True
-        
-    except Exception as e:
-        st.error(f"Ошибка при сохранении в Supabase: {str(e)}")
-        return False
-
-def get_new_records_from_dataframe(new_df: pd.DataFrame) -> pd.DataFrame:
-    """Получить только новые записи, сравнивая с существующими в БД"""
-    try:
-        existing_df = load_existing_peresdachi()
-        
-        if existing_df.empty:
-            return new_df
-        
-        merge_cols = ['Адрес электронной почты', 'Наименование дисциплины']
-        
-        if all(col in existing_df.columns for col in merge_cols) and all(col in new_df.columns for col in merge_cols):
-            merged = new_df.merge(
-                existing_df[merge_cols],
-                on=merge_cols,
-                how='left',
-                indicator=True
-            )
-            result = merged[merged['_merge'] == 'left_only'].drop('_merge', axis=1)
-            return result
-        else:
-            return new_df
-            
-    except Exception as e:
-        st.warning(f"Ошибка при определении новых записей: {str(e)}")
-        return new_df
-
-def process_external_assessment(grades_df: pd.DataFrame, students_df: pd.DataFrame) -> pd.DataFrame:
-    """Обработка пересдач внешней оценки"""
-    # Шаг 1: Очистка данных
-    for col in grades_df.columns:
-        if grades_df[col].dtype == 'object':
-            grades_df[col] = grades_df[col].astype(str).str.replace('-', '', regex=False).str.strip()
-    
-    # Шаг 2: Переименование колонок
-    column_mapping = {
-        'Тест:Входное тестирование (Значение)': 'Внешнее измерение цифровых компетенций. Входной контроль',
-        'Тест:Промежуточное тестирование (Значение)': 'Внешнее измерение цифровых компетенций. Промежуточный контроль',
-        'Тест:Итоговое тестирование (Значение)': 'Внешнее измерение цифровых компетенций. Итоговый контроль'
-    }
-    
-    grades_df = grades_df.rename(columns=column_mapping)
-    
-    # Шаг 3: Melt - преобразование колонок в строки
-    value_columns = [
-        'Внешнее измерение цифровых компетенций. Входной контроль',
-        'Внешнее измерение цифровых компетенций. Промежуточный контроль',
-        'Внешнее измерение цифровых компетенций. Итоговый контроль'
-    ]
-    
-    id_cols = ['Адрес электронной почты']
-    if 'Адрес электронной почты' not in grades_df.columns:
-        st.error("Колонка 'Адрес электронной почты' не найдена в файле оценок")
-        return pd.DataFrame()
-    
-    melted_df = pd.melt(
-        grades_df,
-        id_vars=id_cols,
-        value_vars=value_columns,
-        var_name='Наименование дисциплины',
-        value_name='Оценка'
-    )
-    
-    # Шаг 4: Присоединение данных студентов
-    students_cols = ['ФИО', 'Адрес электронной почты', 'Филиал (кампус)', 
-                     'Факультет', 'Образовательная программа', 'Группа', 'Курс']
-    
-    missing_cols = [col for col in students_cols if col not in students_df.columns]
-    if missing_cols:
-        st.warning(f"Отсутствуют колонки в файле студентов: {missing_cols}")
-        available_cols = [col for col in students_cols if col in students_df.columns]
-    else:
-        available_cols = students_cols
-    
-    students_subset = students_df[available_cols].copy()
-    
-    # Очистка email
-    melted_df['Адрес электронной почты'] = melted_df['Адрес электронной почты'].astype(str).str.strip().str.lower()
-    students_subset['Адрес электронной почты'] = students_subset['Адрес электронной почты'].astype(str).str.strip().str.lower()
-    
-    result_df = melted_df.merge(
-        students_subset,
-        on='Адрес электронной почты',
-        how='left'
-    )
-    
-    # Шаг 5: Добавление пустых колонок
-    result_df['ID дисциплины'] = ''
-    result_df['Период аттестации'] = ''
-    
-    # Шаг 6: Переименование
-    if 'Филиал (кампус)' in result_df.columns:
-        result_df = result_df.rename(columns={'Филиал (кампус)': 'Кампус'})
-    
-    # Шаг 7: Упорядочивание колонок
-    output_columns = [
-        'ФИО', 'Адрес электронной почты', 'Кампус', 'Факультет',
-        'Образовательная программа', 'Группа', 'Курс', 'ID дисциплины',
-        'Наименование дисциплины', 'Период аттестации', 'Оценка'
-    ]
-    
-    final_columns = [col for col in output_columns if col in result_df.columns]
-    result_df = result_df[final_columns]
-    
-    # Удаление строк с пустыми оценками
-    result_df = result_df[result_df['Оценка'].notna()]
-    result_df = result_df[result_df['Оценка'].astype(str).str.strip() != '']
-    result_df = result_df[result_df['Оценка'].astype(str).str.strip() != 'nan']
-    
-    # --- НОВЫЙ ШАГ: Проверка и обновление оценок из student_io ---
-    st.info("Проверка существующих оценок в student_io...")
-    student_io_df = load_student_io_from_supabase()
-    
-    if not student_io_df.empty:
-        # Очищаем email и дисциплину в result_df для сравнения
-        # Убедимся, что они строковые и приведены к нужному формату
-        result_df['Адрес электронной почты'] = result_df['Адрес электронной почты'].astype(str).str.strip().str.lower()
-        result_df['Наименование дисциплины'] = result_df['Наименование дисциплины'].astype(str).str.strip()
-
-        # Сливаем с student_io по email и дисциплине, приоритет у оценки из student_io
-        # suffixes указывает, что делать с одинаковыми именами столбцов ('Оценка' в данном случае)
-        # '_x' будет для оценки из result_df ('Оценка_x'), '_y' для оценки из student_io ('Оценка_y')
-        merged_with_io = result_df.merge(
-            student_io_df[['Адрес электронной почты', 'Наименование дисциплины', 'Оценка']], # Выбираем нужные колонки из student_io
-            on=['Адрес электронной почты', 'Наименование дисциплины'],
-            how='left',
-            suffixes=('_from_file', '_from_io') # Используем более понятные суффиксы
-        )
-        
-        # Создаем новую колонку 'Оценка' на основе логики: если 'Оценка_from_io' не NaN, берем её, иначе 'Оценка_from_file'
-        # pd.notna проверяет, что значение не NaN
-        merged_with_io['Оценка'] = merged_with_io['Оценка_from_io'].where(
-            pd.notna(merged_with_io['Оценка_from_io']), 
-            merged_with_io['Оценка_from_file'] # Берем оценку из исходного файла
-        )
-        
-        # Убираем временные колонки 'Оценка_from_file' и 'Оценка_from_io'
-        result_df = merged_with_io.drop(columns=['Оценка_from_file', 'Оценка_from_io'])
-        
-        # Убираем строки, где 'Оценка' стала NaN или пустой строкой после обновления
-        # Используем pd.isna() для проверки NaN и str.strip().eq('') для пустых строк
-        # Сначала убедимся, что 'Оценка' строковая, чтобы избежать ошибок при strip
-        result_df = result_df[result_df['Оценка'].astype(str).str.strip() != '']
-        result_df = result_df[result_df['Оценка'].notna()]
-        # Проверим на 'nan' как строку
-        result_df = result_df[result_df['Оценка'].astype(str).str.strip().str.lower() != 'nan']
-        
-        st.success(f"Проверка завершена. Найдено {len(student_io_df)} записей в student_io. Оценки обновлены при совпадении.")
-    else:
-        st.info("Таблица student_io пуста, используются оценки из файла.")
-    # --- КОНЕЦ НОВОГО ШАГА ---
-    
-    
-    return result_df
-
-# Проверка подключения к Supabase
-try:
+# === Универсальная загрузка из Supabase с кэшем ===
+@st.cache_data(ttl=3600, show_spinner="Загрузка данных из Supabase...")
+def fetch_all(table: str, filters: dict = None, columns: str = "*"):
     supabase = get_supabase_client()
+    query = supabase.table(table).select(columns, count='exact')
+    if filters:
+        for k, v in filters.items():
+            query = query.eq(k, v)
+    
+    data = []
+    offset = 0
+    while True:
+        resp = query.range(offset, offset + 999).execute()
+        if not resp.data:
+            break
+        data.extend(resp.data)
+        if len(resp.data) < 1000:
+            break
+        offset += 1000
+    return pd.DataFrame(data) if data else pd.DataFrame()
+
+# === Проверка подключения ===
+try:
+    get_supabase_client().table('students').select('id', count='exact').limit(1).execute()
     st.success("Подключение к Supabase установлено")
 except Exception as e:
-    st.error(f"Ошибка подключения к Supabase: {str(e)}")
+    st.error(f"Ошибка подключения к Supabase: {e}")
     st.stop()
 
 st.markdown("---")
 
-# Загрузка файла с оценками
+# === Загрузка файла ===
 st.subheader("Загрузка файла с оценками")
 grades_file = st.file_uploader(
-    "Выберите файл с оценками (external_assessment)",
+    "Выберите файл (xlsx)",
     type=['xlsx', 'xls'],
-    key="external_grades_file",
-    help="Файл должен содержать колонки: Адрес электронной почты, Тест:Входное/Промежуточное/Итоговое тестирование (Значение)"
+    help="Обязательные колонки: 'Адрес электронной почты' и колонки с 'Тест:... (Значение)'"
 )
 
-if grades_file:
-    try:
-        with st.spinner("Загрузка файла с оценками..."):
-            grades_df = pd.read_excel(grades_file)
-        
-        st.success("Файл с оценками успешно загружен!")
-        
-        # Загрузка студентов из Supabase
-        with st.spinner("Загрузка списка студентов из Supabase..."):
-            students_df = load_students_from_supabase()
-        
-        if students_df.empty:
-            st.error("Список студентов пуст. Загрузите данные в таблицу `students` в Supabase.")
-            st.stop()
-        else:
-            st.success(f"Загружено {len(students_df)} студентов из Supabase")
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Записей с оценками", len(grades_df))
-        with col2:
-            st.metric("Студентов в базе", len(students_df))
-        with col3:
-            st.metric("Колонок в оценках", len(grades_df.columns))
-        
-        col_preview1, col_preview2 = st.columns(2)
-        with col_preview1:
-            with st.expander("Предпросмотр файла с оценками"):
-                st.dataframe(grades_df.head(), use_container_width=True)
-        
-        with col_preview2:
-            with st.expander("Предпросмотр списка студентов"):
-                st.dataframe(students_df.head(10), use_container_width=True)
-        
-        if st.button("Обработать данные", type="primary", key="process_btn"):
-            with st.spinner("Обработка пересдач..."):
-                try:
-                    result_df = process_external_assessment(grades_df, students_df)
-                    
-                    if result_df.empty:
-                        st.error("Не удалось обработать данные. Проверьте структуру файла.")
-                    else:
-                        st.success("Обработка успешно завершена!")
-                        
-                        # Определяем новые записи ДО сохранения в БД
-                        with st.spinner("Определение новых записей..."):
-                            display_new_records = get_new_records_from_dataframe(result_df)
-                            new_count = len(display_new_records)
-                            total_count = len(result_df)
-                        
-                        # Сохранение в Supabase
-                        with st.spinner("Сохранение в Supabase..."):
-                            save_success = save_to_supabase(result_df)
-                            if save_success:
-                                st.success(f"Сохранено в Supabase: {new_count} новых записей из {total_count}")
-                            else:
-                                st.error("Ошибка при сохранении данных в Supabase")
-                                st.stop()  # Прерываем, если не удалось сохранить
-                        
-                        # Статистика
-                        st.subheader("Результаты обработки")
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Всего обработано записей", total_count)
-                        with col2:
-                            st.metric("Новых записей", new_count)
-                        with col3:
-                            existing_count = total_count - new_count
-                            st.metric("Уже существовало", existing_count)
-                        
-                        # Предпросмотр
-                        tab1, tab2 = st.tabs(["Все обработанные данные", "Только новые записи"])
-                        
-                        with tab1:
-                            st.dataframe(result_df, use_container_width=True)
-                            
-                            output_all = io.BytesIO()
-                            with pd.ExcelWriter(output_all, engine='openpyxl') as writer:
-                                result_df.to_excel(writer, index=False, sheet_name='Все пересдачи')
-                            output_all.seek(0)
-                            
-                            current_date = datetime.now().strftime('%d-%m-%Y')
-                            download_filename_all = f"Пересдачи_все_{current_date}.xlsx"
-                            
-                            st.download_button(
-                                label="Скачать все записи (XLSX)",
-                                data=output_all.getvalue(),
-                                file_name=download_filename_all,
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                key="download_all"
-                            )
-                        
-                        with tab2:
-                            if display_new_records.empty:
-                                st.info("Новых записей нет. Все данные уже были в базе.")
-                            else:
-                                st.dataframe(display_new_records, use_container_width=True)
-                                
-                                output_new = io.BytesIO()
-                                with pd.ExcelWriter(output_new, engine='openpyxl') as writer:
-                                    display_new_records.to_excel(writer, index=False, sheet_name='Новые пересдачи')
-                                output_new.seek(0)
-                                
-                                download_filename_new = f"Пересдачи_новые_{current_date}.xlsx"
-                                
-                                st.download_button(
-                                    label="Скачать только новые записи (XLSX)",
-                                    data=output_new.getvalue(),
-                                    file_name=download_filename_new,
-                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                    key="download_new"
-                                )
-                        
-                        # Дополнительная статистика
-                        with st.expander("Статистика по обработке"):
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.write("**Распределение по дисциплинам:**")
-                                if 'Наименование дисциплины' in result_df.columns:
-                                    discipline_counts = result_df['Наименование дисциплины'].value_counts()
-                                    st.dataframe(discipline_counts)
-                            
-                            with col2:
-                                st.write("**Уникальные студенты:**")
-                                if 'ФИО' in result_df.columns:
-                                    unique_students = result_df['ФИО'].nunique()
-                                    st.metric("Уникальных студентов", unique_students)
-                
-                except Exception as e:
-                    st.error(f"Ошибка при обработке: {str(e)}")
-                    st.exception(e)
-    
-    except Exception as e:
-        st.error(f"Ошибка при загрузке файла: {str(e)}")
-        st.exception(e)
-
-else:
+if not grades_file:
     st.info("Загрузите файл с оценками для начала работы")
     
-    # Показываем текущее состояние базы данных
-    with st.expander("Текущее состояние базы данных"):
-        existing_peresdachi = load_existing_peresdachi()
-        if existing_peresdachi.empty:
-            st.info("Таблица peresdachi пуста или не создана")
+    with st.expander("Текущее состояние таблицы peresdachi"):
+        current = fetch_all('peresdachi')
+        if current.empty:
+            st.info("Таблица пуста")
         else:
-            st.metric("Записей в таблице peresdachi", len(existing_peresdachi))
-            st.dataframe(existing_peresdachi.head(10), use_container_width=True)
+            st.metric("Записей в peresdachi", len(current))
+            st.dataframe(current.head(10), use_container_width=True)
+    st.stop()
+
+# === Чтение и валидация файла ===
+try:
+    grades_df = pd.read_excel(grades_file)
+    st.success(f"Файл загружен: {len(grades_df)} строк")
+except Exception as e:
+    st.error(f"Не удалось прочитать файл: {e}")
+    st.stop()
+
+# Проверка обязательных колонок
+required_base = ['Адрес электронной почты']
+test_cols = [col for col in grades_df.columns if 'Тест:' in col and '(Значение)' in col]
+if not test_cols:
+    st.error("Не найдено колонок вида 'Тест:... (Значение)'")
+    st.stop()
+
+# === Предпросмотр ===
+col1, col2 = st.columns(2)
+with col1:
+    with st.expander("Предпросмотр загруженного файла"):
+        st.dataframe(grades_df.head(10), use_container_width=True)
+with col2:
+    st.metric("Строк в файле", len(grades_df))
+    st.metric("Тестовых колонок найдено", len(test_cols))
+
+# === Кнопка обработки (вне условий — не сбрасывается) ===
+if st.button("Обработать данные и сохранить в Supabase", type="primary", use_container_width=True):
+    with st.spinner("Обработка данных..."):
+        
+        # 1. Загрузка студентов
+        students_df = fetch_all('students', filters={'курс': 'Курс 4'})
+        if students_df.empty:
+            st.error("Нет студентов на Курсе 4 в таблице `students`")
+            st.stop()
+        st.info(f"Загружено студентов: {len(students_df)}")
+
+        # 2. Переименование колонок дисциплин
+        DISCIPLINE_MAPPING = {
+            'Тест:Входное тестирование (Значение)': 'Внешнее измерение цифровых компетенций. Входной контроль',
+            'Тест:Промежуточное тестирование (Значение)': 'Внешнее измерение цифровых компетенций. Промежуточный контроль',
+            'Тест:Итоговое тестирование (Значение)': 'Внешнее измерение цифровых компетенций. Итоговый контроль'
+        }
+        grades_df = grades_df.rename(columns=DISICIPLINE_MAPPING)
+
+        # 3. Melt в длинный формат
+        value_cols = [v for k, v in DISCIPLINE_MAPPING.items() if k in grades_df.columns]
+        if not value_cols:
+            st.error("Не удалось сопоставить колонки тестирований")
+            st.stop()
+
+        melted = pd.melt(
+            grades_df,
+            id_vars=['Адрес электронной почты'],
+            value_vars=value_cols,
+            var_name='Наименование дисциплины',
+            value_name='Оценка'
+        )
+
+        # Очистка
+        melted = melted[melted['Оценка'].notna()]
+        melted['Оценка'] = melted['Оценка'].astype(str).str.replace('-', '').str.strip()
+        melted = melted[melted['Оценка'].str.len() > 0]
+        melted['Адрес электронной почты'] = melted['Адрес электронной почты'].str.strip().str.lower()
+
+        # 4. Присоединение данных студентов
+        students_df['Адрес электронной почты'] = students_df['корпоративная_почта'].str.strip().str.lower()
+        result = melted.merge(
+            students_df[['Адрес электронной почты', 'фио', 'филиал_кампус', 'факультет', 
+                         'образовательная_программа', 'группа']],
+            on='Адрес электронной почты',
+            how='left'
+        )
+        result = result.rename(columns={
+            'фио': 'ФИО',
+            'филиал_кампус': 'Кампус',
+            'факультет': 'Факультет',
+            'образовательная_программа': 'Образовательная программа',
+            'группа': 'Группа'
+        })
+
+        # 5. Приоритет оценок из student_io
+        student_io = fetch_all('student_io', columns='"Адрес электронной почты", "Наименование дисциплины", "Оценка"')
+        if not student_io.empty:
+            student_io['Адрес электронной почты'] = student_io['Адрес электронной почты'].astype(str).str.strip().str.lower()
+            student_io['Наименование дисциплины'] = student_io['Наименование дисциплины'].astype(str).str.strip()
+            student_io['Оценка'] = student_io['Оценка'].astype(str).str.strip()
+
+            result['key'] = result['Адрес электронной почты'] + '|' + result['Наименование дисциплины']
+            student_io['key'] = student_io['Адрес электронной почты'] + '|' + student_io['Наименование дисциплины']
+
+            io_dict = dict(zip(student_io['key'], student_io['Оценка']))
+            result['Оценка'] = result['key'].map(io_dict).fillna(result['Оценка'])
+            result.drop('key', axis=1, inplace=True)
+            st.success(f"Применены оценки из student_io для {len(io_dict)} совпадений")
+
+        # 6. Финальные колонки
+        result['ID дисциплины'] = ''
+        result['Период аттестации'] = ''
+        result['Курс'] = 'Курс 4'
+
+        final_cols = ['ФИО', 'Адрес электронной почты', 'Кампус', 'Факультет',
+                      'Образовательная программа', 'Группа', 'Курс', 'ID дисциплины',
+                      'Наименование дисциплины', 'Период аттестации', 'Оценка']
+        result = result[[c for c in final_cols if c in result.columns]]
+
+        # === Сохранение в Supabase ===
+        with st.spinner("Сохранение в Supabase (upsert)..."):
+            supabase = get_supabase_client()
+            records = result.to_dict('records')
+            # Замена NaN на None для Supabase
+            records = [{k: (v if pd.notna(v) else None) for k, v in r.items()} for r in records]
+
+            response = supabase.table('peresdachi') \
+                .upsert(records, on_conflict=['Адрес электронной почты', 'Наименование дисциплины']) \
+                .execute()
+
+            st.success(f"Успешно сохранено/обновлено {len(result)} записей в таблицу `peresdachi`")
+
+        # === Результаты ===
+        st.balloons()
+        st.subheader("Готово! Результат обработки")
+        st.metric("Обработано и сохранено записей", len(result))
+
+        tab1, tab2 = st.tabs(["Все записи", "Статистика"])
+
+        with tab1:
+            st.dataframe(result, use_container_width=True)
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                result.to_excel(writer, index=False, sheet_name='Пересдачи')
+            output.seek(0)
+            st.download_button(
+                "Скачать результат (XLSX)",
+                data=output.getvalue(),
+                file_name=f"Пересдачи_{datetime.now():%d-%m-%Y}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+        with tab2:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write("По дисциплинам:")
+                st.bar_chart(result['Наименование дисциплины'].value_counts())
+            with col2:
+                st.write("По кампусам:")
+                st.bar_chart(result['Кампус'].value_counts().head(10))
