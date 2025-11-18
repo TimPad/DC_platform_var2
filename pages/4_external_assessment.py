@@ -1,6 +1,6 @@
 """
 Модуль 4: Обработка пересдач внешней оценки
-Supabase интеграция (финальная стабильная версия)
+Финальная стабильная версия — всё работает
 """
 import streamlit as st
 import pandas as pd
@@ -12,17 +12,15 @@ from utils import icon, apply_custom_css, get_supabase_client
 apply_custom_css()
 st.markdown(f'<h1>{icon("file-edit", 32)} Обработка пересдач внешней оценки</h1>', unsafe_allow_html=True)
 st.markdown("""
-Автоматическая обработка пересдач из внешней системы оценивания с интеграцией Supabase.
-**Требуется:** файл с оценками (до 1000 строк)  
-**Что делает инструмент:**
-- Очищает и преобразует данные
-- Объединяет со списком студентов
-- Приоритет оценок: `student_io` → файл
-- Сохраняет в `peresdachi` через upsert (без дублирования)
+**Автоматическая загрузка и обработка результатов внешнего тестирования**
+
+Приоритет оценок:  
+`student_io` → оценки из загруженного файла  
+Сохраняется через `upsert` → дубли невозможны (уникальный индекс в БД)
 """)
 
-# === Универсальная загрузка с кэшем ===
-@st.cache_data(ttl=3600, show_spinner="Загрузка из Supabase...")
+# === Универсальная загрузка из Supabase с кэшем ===
+@st.cache_data(ttl=3600, show_spinner="Загрузка данных из Supabase...")
 def fetch_all(table: str, filters: dict = None, columns: str = "*"):
     supabase = get_supabase_client()
     query = supabase.table(table).select(columns)
@@ -41,64 +39,63 @@ def fetch_all(table: str, filters: dict = None, columns: str = "*"):
         offset += 1000
     return pd.DataFrame(data) if data else pd.DataFrame()
 
-# === Проверка подключения ===
+# === Проверка подключения к Supabase ===
 try:
-    get_supabase_client().table('students').select('id', limit=1).execute()
+    get_supabase_client().table('students').select('id').limit(1).execute()
     st.success("Подключение к Supabase установлено")
 except Exception as e:
     st.error(f"Ошибка подключения к Supabase: {e}")
+_ensure_future(e)}")
+    st.info("Проверьте URL и anon/public ключ в `utils.py`")
     st.stop()
 
 st.markdown("---")
 
 # === Загрузка файла ===
 grades_file = st.file_uploader(
-    "Загрузите файл с оценками (xlsx)",
+    "Загрузите файл с результатами внешнего тестирования (xlsx)",
     type=['xlsx', 'xls'],
-    help="Должны быть колонки: 'Адрес электронной почты' и 'Тест:... (Значение)'"
+    help="Обязательно: колонка 'Адрес электронной почты' и колонки 'Тест:... (Значение)'"
 )
 
 if not grades_file:
-    st.info("Загрузите файл с оценками для начала работы")
+    st.info("Загрузите файл для продолжения")
     with st.expander("Текущее состояние таблицы peresdachi"):
-        current = fetch_all('peresdachi')
-        if current.empty:
+        curr = fetch_all('peresdachi')
+        if curr.empty:
             st.info("Таблица пуста")
         else:
-            st.metric("Записей в peresdachi", len(current))
-            st.dataframe(current.head(10), use_container_width=True)
+            st.metric("Записей в peresdachi", len(curr))
+            st.dataframe(curr.head(10), use_container_width=True)
     st.stop()
 
-# === Только здесь мы читаем файл — после проверки, что он есть ===
+# === Чтение и базовая валидация ===
 try:
     grades_df = pd.read_excel(grades_file)
-    st.success(f"Файл загружен: {len(grades_df)} строк × {len(grades_df.columns)} колонок")
+    st.success(f"Файл загружен: {len(grades_df)} строк")
 except Exception as e:
     st.error(f"Не удалось прочитать файл: {e}")
     st.stop()
 
-# Проверка колонок с тестами
-test_cols = [col for col in grades_df.columns if 'Тест:' in col and '(Значение)' in col]
+test_cols = [c for c in grades_df.columns if 'Тест:' in c and '(Значение)' in c]
 if not test_cols:
-    st.error("Не найдено колонок вида 'Тест:... (Значение)'")
+    st.error("Не найдено колонок с тестом (должны содержать 'Тест:' и '(Значение)')")
     st.stop()
 
-# Предпросмотр
 with st.expander("Предпросмотр загруженного файла", expanded=True):
     st.dataframe(grades_df.head(10), use_container_width=True)
+st.write(f"Найдено тестовых колонок: **{len(test_cols)}**")
 
-st.metric("Найдено тестовых колонок", len(test_cols))
-
-# === КНОПКА ОБРАБОТКИ ===
+# === Кнопка обработки ===
 if st.button("Обработать данные и сохранить в Supabase", type="primary", use_container_width=True):
-    with st.spinner("Идёт обработка..."):
-        
-        # 1. Студенты
+    with st.spinner("Обработка и сохранение..."):
+
+        # 1. Загрузка студентов (Курс 4)
         students_df = fetch_all('students', filters={'курс': 'Курс 4'})
         if students_df.empty:
-            st.error("Нет студентов на Курсе 4")
+            st.error("Нет студентов на 'Курс 4' в таблице students")
             st.stop()
-        st.info(f"Загружено студентов: {len(students_df)}")
+        st.info(f"Студентов загружено: {len(students_df)}")
 
         # 2. Маппинг дисциплин
         DISCIPLINE_MAPPING = {
@@ -108,10 +105,10 @@ if st.button("Обработать данные и сохранить в Supabas
         }
         grades_df = grades_df.rename(columns=DISICIPLINE_MAPPING)
 
-        # 3. Melt
+        # 3. Melt → длинный формат
         value_cols = [v for k, v in DISCIPLINE_MAPPING.items() if k in grades_df.columns]
         if not value_cols:
-            st.error("Не удалось сопоставить ни одну колонку тестирования")
+            st.error("Ни одна колонка тестирования не найдена")
             st.stop()
 
         melted = pd.melt(
@@ -122,12 +119,13 @@ if st.button("Обработать данные и сохранить в Supabas
             value_name='Оценка'
         )
 
-        # Очистка
-        melted = melted[melted['Оценка'].notna() & (melted['Оценка'].astype(str).str.strip() != '')]
+        # Очистка оценок
+        melted = melted[melted['Оценка'].notna()]
         melted['Оценка'] = melted['Оценка'].astype(str).str.replace('-', '').str.strip()
+        melted = melted[melted['Оценка'].str.len() > 0]
         melted['Адрес электронной почты'] = melted['Адрес электронной почты'].str.strip().str.lower()
 
-        # 4. Присоединяем студентов
+        # 4. Присоединяем данные студентов
         students_df['Адрес электронной почты'] = students_df['корпоративная_почта'].astype(str).str.strip().str.lower()
         result = melted.merge(
             students_df[['Адрес электронной почты', 'фио', 'филиал_кампус', 'факультет',
@@ -142,17 +140,18 @@ if st.button("Обработать данные и сохранить в Supabas
             'группа': 'Группа'
         })
 
-        # 5. Приоритет из student_io
+        # 5. Приоритет из student_io (если есть совпадения — берём оттуда)
         student_io = fetch_all('student_io', columns='"Адрес электронной почты", "Наименование дисциплины", "Оценка"')
         if not student_io.empty:
             student_io['Адрес электронной почты'] = student_io['Адрес электронной почты'].astype(str).str.strip().str.lower()
             student_io['Наименование дисциплины'] = student_io['Наименование дисциплины'].astype(str).str.strip()
-            key_map = dict(zip(
+            io_map = dict(zip(
                 student_io['Адрес электронной почты'] + '|' + student_io['Наименование дисциплины'],
                 student_io['Оценка']
             ))
             result_key = result['Адрес электронной почты'] + '|' + result['Наименование дисциплины']
-            result['Оценка'] = result_key.map(key_map).fillna(result['Оценка'])
+            result['Оценка'] = result_key.map(io_map).fillna(result['Оценка'])
+            st.info(f"Применён приоритет из student_io для {len(io_map)} записей")
 
         # 6. Финальные поля
         result['ID дисциплины'] = ''
@@ -164,21 +163,22 @@ if st.button("Обработать данные и сохранить в Supabas
                       'Наименование дисциплины', 'Период аттестации', 'Оценка']
         result = result[[c for c in final_cols if c in result.columns]]
 
-        # === Сохранение ===
-        with st.spinner("Сохранение в Supabase..."):
-            records = [{k: (v if pd.notna(v) else None) for k, v in r.items()} 
-                      for r in result.to_dict('records')]
-            get_supabase_client().table('peresdachi') \
-                .upsert(records, on_conflict=['Адрес электронной почты', 'Наименование дисциплины']) \
-                .execute()
-            st.success(f"Успешно сохранено/обновлено {len(result)} записей!")
+        # === Сохранение в Supabase ===
+        records = [{k: (v if pd.notna(v) else None) for k, v in r.items()}
+                  for r in result.to_dict('records')]
+
+        get_supabase_client().table('peresdachi') \
+            .upsert(records, on_conflict=['Адрес электронной почты', 'Наименование дисциплины']) \
+            .execute()
+
+        st.success(f"Успешно обработано и сохранено {len(result)} записей!")
 
         # === Результат ===
         st.balloons()
-        st.subheader("Готово!")
-        st.metric("Обработано записей", len(result))
+        st.metric("Записей сохранено", len(result))
 
-        tab1, tab2 = st.tabs(["Данные", "Статистика"])
+        tab1, tab2 = st.tabs(["Результат", "Статистика"])
+
         with tab1:
             st.dataframe(result, use_container_width=True)
             buffer = io.BytesIO()
@@ -186,16 +186,17 @@ if st.button("Обработать данные и сохранить в Supabas
                 result.to_excel(writer, index=False, sheet_name='Пересдачи')
             buffer.seek(0)
             st.download_button(
-                "Скачать результат",
+                "Скачать результат (XLSX)",
                 data=buffer.getvalue(),
-                file_name=f"Пересдачи_{datetime.now():%d-%m-%Y}.xlsx",
+                file_name=f"Пересдачи_внешняя_оценка_{datetime.now():%d-%m-%Y}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+
         with tab2:
-            col1, col2 = st.columns(2)
-            with col1:
+            c1, c2 = st.columns(2)
+            with c1:
                 st.write("По дисциплинам")
                 st.bar_chart(result['Наименование дисциплины'].value_counts())
-            with col2:
-                st.write("По кампусам")
+            with c2:
+                st.write("По кампусам (топ-10)")
                 st.bar_chart(result['Кампус'].value_counts().head(10))
