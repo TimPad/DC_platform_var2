@@ -256,6 +256,6 @@ def get_nebius_client():
     if "NEBIUS_API_KEY" not in st.secrets:
         raise ValueError("NEBIUS_API_KEY не найден в secrets.")
     return OpenAI(
-        base_url="https://api.studio.nebius.com/v1/",
+        base_url="https://api.tokenfactory.nebius.com/v1/",
         api_key=st.secrets["NEBIUS_API_KEY"]
     )
