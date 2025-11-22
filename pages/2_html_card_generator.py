@@ -41,10 +41,21 @@ def generate_hse_html(client, user_text: str) -> str:
     """
     response = client.chat.completions.create(
         model="Qwen/Qwen3-Coder-30B-A3B-Instruct",
-        response_format={"type": "json_object"},
+        # response_format={"type": "json_object"}, # Removed to match user example
         messages=[
-            {"role": "system", "content": SYSTEM_MESSAGE},
-            {"role": "user", "content": user_text}
+            {
+                "role": "system", 
+                "content": SYSTEM_MESSAGE
+            },
+            {
+                "role": "user", 
+                "content": [
+                    {
+                        "type": "text",
+                        "text": user_text
+                    }
+                ]
+            }
         ],
         timeout=120.0
     )
