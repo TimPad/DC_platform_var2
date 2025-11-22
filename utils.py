@@ -6,6 +6,8 @@ DataCulture Platform - Shared Utilities
 import streamlit as st
 from supabase import create_client, Client
 from openai import OpenAI
+import requests
+from streamlit_lottie import st_lottie
 
 # =============================================================================
 # КОНСТАНТЫ
@@ -241,3 +243,18 @@ def get_nebius_client():
         base_url="https://api.tokenfactory.nebius.com/v1/",
         api_key=st.secrets["NEBIUS_API_KEY"]
     )
+
+# =============================================================================
+# LOTTIE ANIMATION HELPER
+# =============================================================================
+
+@st.cache_data
+def load_lottie_url(url: str):
+    """Загрузка Lottie анимации по URL"""
+    try:
+        r = requests.get(url)
+        if r.status_code != 200:
+            return None
+        return r.json()
+    except:
+        return None

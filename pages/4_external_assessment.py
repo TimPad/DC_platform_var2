@@ -8,7 +8,9 @@ import pandas as pd
 import io
 from datetime import datetime
 from typing import Tuple
-from utils import icon, apply_custom_css, get_supabase_client
+from utils import icon, apply_custom_css, get_supabase_client, load_lottie_url
+from constants import LOTTIE_SUCCESS_URL, LOTTIE_EMPTY_URL
+from streamlit_lottie import st_lottie
 
 # Применяем кастомные стили
 apply_custom_css()
@@ -154,6 +156,9 @@ if grades_file:
                             save_success = save_to_supabase(display_new_records)
                             if save_success:
                                 st.success(f"Сохранено в Supabase: {new_count} новых записей из {total_count} (после удаления дубликатов из исходного набора).")
+                                lottie_success = load_lottie_url(LOTTIE_SUCCESS_URL)
+                                if lottie_success:
+                                    st_lottie(lottie_success, height=150, key="success_anim")
                             else:
                                 st.error("Ошибка при сохранении данных в Supabase")
                                 st.stop()  # Прерываем, если не удалось сохранить
@@ -243,6 +248,9 @@ else:
         existing_peresdachi = load_existing_peresdachi()
         if existing_peresdachi.empty:
             st.info("Таблица peresdachi пуста или не создана")
+            lottie_empty = load_lottie_url(LOTTIE_EMPTY_URL)
+            if lottie_empty:
+                st_lottie(lottie_empty, height=200, key="empty_anim")
         else:
             st.metric("Записей в таблице peresdachi", len(existing_peresdachi))
             st.dataframe(existing_peresdachi.head(10), use_container_width=True)

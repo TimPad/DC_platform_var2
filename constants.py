@@ -94,3 +94,10 @@ SYSTEM_MESSAGE = (
     "Пример корректного вывода:\n"
     + str({"type": "HTML", "content": HTML_EXAMPLE})
 )
+
+# =============================================================================
+# LOTTIE ANIMATIONS
+# =============================================================================
+LOTTIE_LOADING_URL = "https://assets5.lottiefiles.com/packages/lf20_V9t630.json"  # Coding/Processing
+LOTTIE_SUCCESS_URL = "https://assets9.lottiefiles.com/packages/lf20_jbrw3hcz.json"  # Checkmark
+LOTTIE_EMPTY_URL = "https://assets9.lottiefiles.com/packages/lf20_sif17h.json"     # Empty Box

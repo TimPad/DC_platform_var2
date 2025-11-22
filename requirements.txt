@@ -18,3 +18,4 @@ openai>=1.0.0
 
 # Additional dependencies
 python-dateutil>=2.8.0
+streamlit-lottie>=2.8.0
