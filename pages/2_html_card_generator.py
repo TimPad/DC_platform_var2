@@ -50,6 +50,17 @@ def generate_hse_html(client, user_text: str) -> str:
     )
 
     raw_content = response.choices[0].message.content.strip()
+    
+    # Очистка от markdown блоков кода, если они есть
+    if raw_content.startswith("```json"):
+        raw_content = raw_content[7:]
+    elif raw_content.startswith("```"):
+        raw_content = raw_content[3:]
+    
+    if raw_content.endswith("```"):
+        raw_content = raw_content[:-3]
+        
+    raw_content = raw_content.strip()
 
     try:
         parsed = json.loads(raw_content)
