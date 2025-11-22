@@ -103,15 +103,22 @@ def apply_custom_css():
         --apple-shadow: rgba(0,0,0,0.3);
     }
     
-    /* Глобальный фон */
+    /* Анимация появления */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
     .stApp {
         background-color: var(--apple-bg-primary);
+        animation: fadeIn 0.5s ease-out;
     }
     
     /* Сайдбар в стиле Apple */
     [data-testid="stSidebar"] {
         background-color: var(--apple-bg-secondary);
         padding-top: 2rem;
+        border-right: 1px solid var(--apple-divider);
     }
     
     /* Карточки и контейнеры */
@@ -121,6 +128,13 @@ def apply_custom_css():
         border-radius: 12px;
         overflow: hidden;
         margin-bottom: 1rem;
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    
+    div[data-testid="stExpander"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        border-color: rgba(90, 157, 248, 0.3);
     }
     
     /* Кнопки */
@@ -132,18 +146,31 @@ def apply_custom_css():
         padding: 0.6rem 1.5rem;
         font-weight: 500;
         letter-spacing: -0.01em;
-        transition: all 0.2s ease;
+        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
         box-shadow: 0 2px 8px rgba(90, 157, 248, 0.25);
     }
     
     .stButton > button:hover {
         background-color: #4a8de0;
-        box-shadow: 0 4px 12px rgba(90, 157, 248, 0.35);
-        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(90, 157, 248, 0.4);
+        transform: translateY(-2px) scale(1.02);
     }
     
-    /* Заголовки */
-    h1, h2, h3 {
+    .stButton > button:active {
+        transform: translateY(0) scale(0.98);
+    }
+    
+    /* Заголовки с градиентом */
+    h1 {
+        background: linear-gradient(120deg, #e0e0e6 0%, #a1a1aa 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        padding-bottom: 0.5rem;
+    }
+    
+    h2, h3 {
         color: var(--apple-text-primary);
         font-weight: 600;
         letter-spacing: -0.03em;
@@ -155,12 +182,13 @@ def apply_custom_css():
         border: 2px dashed var(--apple-divider);
         border-radius: 12px;
         padding: 2rem;
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
     }
     
     [data-testid="stFileUploader"]:hover {
         border-color: var(--apple-accent);
         background-color: rgba(90, 157, 248, 0.05);
+        transform: scale(1.01);
     }
     
     /* Таблицы */
@@ -168,19 +196,23 @@ def apply_custom_css():
         background-color: var(--apple-bg-secondary);
         border-radius: 12px;
         overflow: hidden;
-        box-shadow: 0 2px 8px var(--apple-shadow);
+        box-shadow: 0 4px 12px var(--apple-shadow);
+        transition: transform 0.3s ease;
     }
     
     /* Метрики */
     [data-testid="stMetricValue"] {
-        color: var(--apple-text-primary);
-        font-size: 1.8rem;
-        font-weight: 600;
+        background: linear-gradient(120deg, #5A9DF8 0%, #3b82f6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 2rem;
+        font-weight: 700;
     }
     
     [data-testid="stMetricLabel"] {
         color: var(--apple-text-secondary);
         font-size: 0.9rem;
+        font-weight: 500;
     }
 </style>
 """, unsafe_allow_html=True)
