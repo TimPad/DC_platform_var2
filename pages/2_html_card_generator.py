@@ -46,7 +46,7 @@ def generate_hse_html(client, user_text: str) -> str:
             {"role": "system", "content": SYSTEM_MESSAGE},
             {"role": "user", "content": user_text}
         ],
-        timeout=60.0
+        timeout=120.0
     )
 
     raw_content = response.choices[0].message.content.strip()
