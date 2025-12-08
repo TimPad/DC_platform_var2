@@ -8,7 +8,7 @@ import json
 import html
 import streamlit.components.v1 as components
 from utils import icon, apply_custom_css, get_nebius_client
-from constants import LOGO_URL, LOGO_URL_BLACK, HTML_EXAMPLE, SYSTEM_MESSAGE
+from constants import LOGO_URL, LOGO_URL_BLACK, LOGO_URL_PNG, HTML_EXAMPLE, SYSTEM_MESSAGE
 
 # Применяем кастомные стили
 apply_custom_css()
