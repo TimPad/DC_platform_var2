@@ -56,17 +56,18 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
         HTML-код карточки
     """
     
-def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str, allow_text_edits: bool, width_option: str) -> str:
+def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str, allow_text_edits: bool, width_css: str, tone: str) -> str:
     """
     Генерация HTML-карточки через Nebius API
     
     Args:
         client: OpenAI клиент
         user_text: Текст объявления
-        style_mode: "HTML с CSS" или "Чистый HTML"
+        style_mode: "HTML с CSS" или "Для почты"
         accent_color: HEX код основного цвета
         allow_text_edits: Разрешить ли ИИ менять текст пользователя
-        width_option: Выбор ширины карточки
+        width_css: CSS значение ширины (напр. "800px" или "100%")
+        tone: Тональность текста
         
     Returns:
         HTML-код карточки
@@ -75,24 +76,22 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
     # Базовый пример
     current_html_example = HTML_EXAMPLE
     
-    # Определяем CSS ширины
-    max_width_css = "max-width: 800px;" if width_option == "Фиксированная (800px)" else "max-width: 100%;"
-    
-    # Определяем цвет текста для хедера (белый или черный)
-    is_light_color = False
-    if accent_color.upper() == "#DFFF00":
-        is_light_color = True
-    header_text_color = "#000000" if is_light_color else "#ffffff"
-    
-    # Выбираем логотип: Черный для Лайма (светлый фон), Зеленый (PNG) для Синего (темный фон)
-    current_logo_url = LOGO_URL_BLACK if is_light_color else LOGO_URL_PNG
+    # Определяем инструкции по тональности
+    tone_instruction = ""
+    if tone == "Неформальная":
+        tone_instruction = "Тон: Неформальный, дружелюбный. Обращайтесь к читателю на 'вы' (но можно тепло). Допустимо использование 1-2 эмодзи для настроения. Стиль живого, но уважительного общения."
+    elif tone == "Строгая":
+        tone_instruction = "Тон: Строгий, официально-деловой. НИКАКИХ эмодзи. Максимально четко, лаконично, по делу. Избегайте 'воды' и фамильярности."
+    elif tone == "Академическая":
+        tone_instruction = "Тон: Академический, университетский. Используйте профессиональную лексику, высокий стиль. Сдержанно, интеллектуально, уважительно."
 
     # Инструкция по работе с текстом
     text_instruction = ""
     if allow_text_edits:
         text_instruction = (
-            "5. Контент: Текст пользователя МОЖНО и НУЖНО улучшать: исправлять ошибки, делать его более продающим, "
-            "разбивать на смысловые блоки, добавлять эмоциональные подзаголовки. "
+            f"5. Контент: {tone_instruction} "
+            "Текст пользователя МОЖНО и НУЖНО улучшать: исправлять ошибки, делать его более продающим и структурным. "
+            "Разбивайте на смысловые блоки, добавлять эмоциональные подзаголовки (если позволяет тон). "
             "Если текст слишком короткий — разверните его, добавьте деталей, но не выдумывайте факты. "
             "Сделайте красивую структуру с буллитами."
         )
@@ -118,13 +117,11 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
     else:
         color_instruction += f"Текст заголовка {header_text_color}."
 
-    # Логика для чистого HTML (теперь это Email-Safe HTML: Таблицы + Inline CSS)
-    if style_mode == "Чистый HTML":
+    # Логика для режима "Для почты" (ранее "Чистый HTML")
+    if style_mode == "Для почты":
         # Улучшенный шаблон для писем
-        # Для чистого HTML оставим 600px как стандарт email, ширину применим только к wrapper'у если надо, но email client может игнорировать.
-        # Пользователь просил ширину. Для email лучше всего 600-800 фикс.
-        # Если выбрано "Auto", поставим 100%.
-        table_width = "100%" if width_option == "На всю ширину (Auto)" else "800"
+        # Используем ширину из аргумента
+        table_width = width_css if width_css.endswith("%") else width_css.replace("px", "")
         
         pure_html_template = f"""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -237,8 +234,9 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
         )
     else:
         # Логика для HTML с Inline CSS (Modern)
-        # Внедряем ширину в контейнер примера (хак, но рабочий для промпта, просим ИИ использовать max-width)
-        current_html_example = current_html_example.replace("max-width: 860px;", max_width_css)
+        # Внедряем ширину в контейнер примера
+        max_width_val = width_css
+        current_html_example = current_html_example.replace("max-width: 860px;", f"max-width: {max_width_val};")
 
         if accent_color.upper() != "#001A57":
             current_html_example = current_html_example.replace("#001a57", accent_color)
@@ -253,7 +251,7 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
             "Ваша задача — преобразовать входной текст объявления в HTML-карточку. "
             "В шапке обязательно должен быть логотип по ссылке: " + current_logo_url + ". "
             "Используйте структуру и CSS-стили из приведённого ниже примера. "
-            f"Ширина карточки должна быть: {max_width_css} "
+            f"Ширина карточки должна быть: {max_width_val} "
             f"{color_instruction}\n"
             "ВАЖНО: Для предупреждений (attention) используйте ЖЕЛТЫЙ блок (background: #FFFBEB, color: #92400E, border-left: 4px solid #F59E0B).\n"
             "ВАЖНО: Для критической информации (important/danger) используйте КРАСНЫЙ блок (background: #FEF2F2, color: #991B1B, border-left: 4px solid #EF4444).\n"
@@ -331,14 +329,20 @@ col_settings_1, col_settings_2 = st.columns(2)
 with col_settings_1:
     style_mode = st.radio(
         "Режим верстки",
-        ["HTML с CSS", "Чистый HTML"],
-        help="Выберите 'Чистый HTML' для создания Email-safe верстки (таблицы + инлайн стили), которая корректно отображается в Outlook и других почтовых клиентах."
+        ["HTML с CSS", "Для почты"],
+        help="Выберите 'Для почты' для создания Email-safe верстки (таблицы + инлайн стили), которая корректно отображается в Outlook и других почтовых клиентах."
     )
     
     allow_text_edits = st.checkbox(
         "Разрешить ИИ редактировать текст",
         value=True,
-        help="Если включено, ИИ может улучшать формулировки, структурировать текст и исправлять ошибки. Если выключено, текст будет вставлен 'как есть', изменится только оформление."
+        help="Если включено, ИИ может улучшать формулировки и структуру. Если выключено, текст будет вставлен 'как есть'."
+    )
+    
+    tone_option = st.selectbox(
+        "Тональность текста",
+        ["Неформальная", "Строгая", "Академическая"],
+        help="Влияет на лексику и стиль изложения (работает, если разрешено редактирование текста)."
     )
 
 with col_settings_2:
@@ -350,11 +354,14 @@ with col_settings_2:
         help="Основной цвет заголовков и элементов дизайна"
     )
     
-    width_option = st.selectbox(
-        "Ширина карточки",
-        ["Фиксированная (800px)", "На всю ширину (Auto)"],
-        help="Выберите ширину контейнера: 'Фиксированная' (800px) для компактного вида или 'На всю ширину' для адаптивности."
-    )
+    st.write("Ширина карточки")
+    is_full_width = st.toggle("На всю ширину (100%)", value=False)
+    
+    if is_full_width:
+        width_css = "100%"
+    else:
+        width_val = st.slider("Ширина (px)", min_value=600, max_value=1200, value=800, step=50, label_visibility="collapsed")
+        width_css = f"{width_val}px"
 
 user_text = st.text_area(
     "Введите текст объявления:",
@@ -369,7 +376,7 @@ if st.button("Сформировать HTML", type="primary"):
         with st.spinner("Генерация карточки..."):
             try:
                 client = get_nebius_client()
-                html_code = generate_hse_html(client, user_text, style_mode, accent_color, allow_text_edits, width_option)
+                html_code = generate_hse_html(client, user_text, style_mode, accent_color, allow_text_edits, width_css, tone_option)
                 # Сохраняем в session_state чтобы не потерять при обновлении
                 st.session_state['generated_html'] = html_code
                 st.success("Карточка успешно создана!")
