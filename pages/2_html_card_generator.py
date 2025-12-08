@@ -8,7 +8,7 @@ import json
 import html
 import streamlit.components.v1 as components
 from utils import icon, apply_custom_css, get_nebius_client
-from constants import LOGO_URL, LOGO_URL_BLACK, LOGO_URL_PNG, HTML_EXAMPLE, SYSTEM_MESSAGE
+from constants import LOGO_URL, LOGO_URL_BLACK, HTML_EXAMPLE, SYSTEM_MESSAGE
 
 # Применяем кастомные стили
 apply_custom_css()
@@ -80,8 +80,8 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
         is_light_color = True
     header_text_color = "#000000" if is_light_color else "#ffffff"
     
-    # Выбираем логотип: Черный для Лайма (светлый фон), Зеленый (PNG) для Синего (темный фон)
-    current_logo_url = LOGO_URL_BLACK if is_light_color else LOGO_URL_PNG
+    # Выбираем логотип
+    current_logo_url = LOGO_URL_BLACK if is_light_color else LOGO_URL
 
     # Инструкция по работе с текстом
     text_instruction = ""
@@ -206,8 +206,6 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
             "Ваша задача — преобразовать входной текст объявления в HTML-карточку. "
             "В шапке обязательно должен быть логотип по ссылке: " + current_logo_url + ". "
             "Используйте структуру и CSS-стили из приведённого ниже примера. "
-            "ВАЖНО: Для предупреждений используйте ЖЕЛТЫЙ блок (background: #fff8e1). "
-            "ВАЖНО: Для полезной информации/ссылок используйте ЗЕЛЕНЫЙ блок (background: #f0fdf4). "
             "Не добавляйте пояснений, комментариев или лишних тегов. "
             f"{text_instruction}\n"
             "Верните ТОЛЬКО корректный JSON в формате: {\"type\": \"HTML\", \"content\": \"<div>...</div>\"}.\n\n"
