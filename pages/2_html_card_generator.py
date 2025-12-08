@@ -247,13 +247,15 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
         max_width_val = width_css
         current_html_example = current_html_example.replace("max-width: 860px;", f"max-width: {max_width_val};")
 
+        # ВСЕГДА заменяем логотип на правильный (PNG для синего, Black для лайма)
+        current_html_example = current_html_example.replace(LOGO_URL, current_logo_url)
+
         if accent_color.upper() != "#001A57":
             current_html_example = current_html_example.replace("#001a57", accent_color)
             current_html_example = current_html_example.replace("#00256c", accent_color)
             if is_light_color:
                 # Если фон светлый, текст на нем делаем черным
                 current_html_example = current_html_example.replace("color: #ffffff;", "color: #000000;")
-                current_html_example = current_html_example.replace(LOGO_URL, current_logo_url)
         
         system_msg = (
             "Вы — эксперт по оформлению официальных рассылок НИУ ВШЭ. "
