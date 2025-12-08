@@ -75,6 +75,15 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
     
     # Базовый пример
     current_html_example = HTML_EXAMPLE
+
+    # Определяем цвет текста для хедера (белый или черный)
+    is_light_color = False
+    if accent_color.upper() == "#DFFF00":
+        is_light_color = True
+    header_text_color = "#000000" if is_light_color else "#ffffff"
+    
+    # Выбираем логотип: Черный для Лайма (светлый фон), Зеленый (PNG) для Синего (темный фон)
+    current_logo_url = LOGO_URL_BLACK if is_light_color else LOGO_URL_PNG
     
     # Определяем инструкции по тональности
     tone_instruction = ""
