@@ -56,7 +56,7 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
         HTML-код карточки
     """
     
-def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str, allow_text_edits: bool) -> str:
+def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str, allow_text_edits: bool, width_option: str) -> str:
     """
     Генерация HTML-карточки через Nebius API
     
@@ -66,6 +66,7 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
         style_mode: "HTML с CSS" или "Чистый HTML"
         accent_color: HEX код основного цвета
         allow_text_edits: Разрешить ли ИИ менять текст пользователя
+        width_option: Выбор ширины карточки
         
     Returns:
         HTML-код карточки
@@ -74,14 +75,17 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
     # Базовый пример
     current_html_example = HTML_EXAMPLE
     
+    # Определяем CSS ширины
+    max_width_css = "max-width: 800px;" if width_option == "Фиксированная (800px)" else "max-width: 100%;"
+    
     # Определяем цвет текста для хедера (белый или черный)
     is_light_color = False
     if accent_color.upper() == "#DFFF00":
         is_light_color = True
     header_text_color = "#000000" if is_light_color else "#ffffff"
     
-    # Выбираем логотип
-    current_logo_url = LOGO_URL_BLACK if is_light_color else LOGO_URL
+    # Выбираем логотип: Черный для Лайма (светлый фон), Зеленый (PNG) для Синего (темный фон)
+    current_logo_url = LOGO_URL_BLACK if is_light_color else LOGO_URL_PNG
 
     # Инструкция по работе с текстом
     text_instruction = ""
@@ -102,9 +106,26 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
             "Главное правило: улучшайте структуру (HTML), но сохраняйте оригинальные формулировки."
         )
 
+    # Инструкции по цветам (Apple Style)
+    color_instruction = f"4. Цвета: Основной цвет {accent_color}. "
+    if is_light_color:
+        color_instruction += (
+            "ВАЖНО: Так как основной цвет ЯРКИЙ (Лайм), используйте его ТОЛЬКО для фонов плашек и декоративных элементов. "
+            "Текст на фоне лайма должен быть ЧЕРНЫМ (#000000). "
+            "Весь основной текст карточки должен быть ЧЕРНЫМ или темно-серым (#111827). "
+            "Никогда не делайте текст цвета лайм на белом фоне — это нечитаемо!"
+        )
+    else:
+        color_instruction += f"Текст заголовка {header_text_color}."
+
     # Логика для чистого HTML (теперь это Email-Safe HTML: Таблицы + Inline CSS)
     if style_mode == "Чистый HTML":
         # Улучшенный шаблон для писем
+        # Для чистого HTML оставим 600px как стандарт email, ширину применим только к wrapper'у если надо, но email client может игнорировать.
+        # Пользователь просил ширину. Для email лучше всего 600-800 фикс.
+        # Если выбрано "Auto", поставим 100%.
+        table_width = "100%" if width_option == "На всю ширину (Auto)" else "800"
+        
         pure_html_template = f"""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -116,8 +137,8 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
   <table border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#ffffff">
     <tr>
       <td align="center" style="padding: 20px 0;">
-        <!-- Основной контейнер 600px для писем -->
-        <table border="0" cellpadding="0" cellspacing="0" width="600" style="border-collapse: collapse; width: 600px; max-width: 600px; min-width: 320px; background-color: #ffffff;">
+        <!-- Основной контейнер -->
+        <table border="0" cellpadding="0" cellspacing="0" width="{table_width}" style="border-collapse: collapse; min-width: 320px; background-color: #ffffff;">
           
           <!-- Хедер -->
           <tr>
@@ -160,6 +181,26 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
               </table>
               <div style="height: 20px;"></div>
 
+              <!-- Блок ВНИМАНИЕ (Yellow) -->
+               <table border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#FFFBEB" style="border-radius: 8px; border-left: 4px solid #F59E0B; border-collapse: separate;">
+                <tr>
+                  <td style="padding: 20px; font-size: 16px; line-height: 24px; color: #92400E; font-family: Arial, sans-serif;">
+                    <strong>Внимание:</strong> Текст предупреждения.
+                  </td>
+                </tr>
+              </table>
+              <div style="height: 20px;"></div>
+
+              <!-- Блок КРИТИЧНО (Red) -->
+               <table border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#FEF2F2" style="border-radius: 8px; border-left: 4px solid #EF4444; border-collapse: separate;">
+                <tr>
+                  <td style="padding: 20px; font-size: 16px; line-height: 24px; color: #991B1B; font-family: Arial, sans-serif;">
+                    <strong>Важно:</strong> Критическая информация.
+                  </td>
+                </tr>
+              </table>
+              <div style="height: 20px;"></div>
+
               <!-- Футер / Подпись -->
               <table border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#ecfdf5" style="border-radius: 8px; border: 1px solid #86efac; border-collapse: separate;">
                 <tr>
@@ -188,17 +229,23 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
             "1. Используйте ТОЛЬКО табличную верстку (table, tr, td) как в шаблоне.\n"
             "2. ВСЕ стили должны быть только inline (style=\"...\").\n"
             "3. Логотип: используйте ссылку " + current_logo_url + "\n"
-            f"4. Цвета: Основной цвет {accent_color}, Текст заголовка {header_text_color}.\n"
+            f"{color_instruction}\n"
+            "5. АЛЕРТЫ: Для предупреждений используйте ЖЕЛТЫЙ блок (bg: #FFFBEB, text: #92400E, border: #F59E0B).\n"
+            "6. АЛЕРТЫ: Для критической информации используйте КРАСНЫЙ блок (bg: #FEF2F2, text: #991B1B, border: #EF4444).\n"
             f"{text_instruction}\n"
-            "6. Верните JSON: {\"type\": \"HTML\", \"content\": \"код...\"}."
+            "8. Верните JSON: {\"type\": \"HTML\", \"content\": \"код...\"}."
         )
     else:
         # Логика для HTML с Inline CSS (Modern)
+        # Внедряем ширину в контейнер примера (хак, но рабочий для промпта, просим ИИ использовать max-width)
+        current_html_example = current_html_example.replace("max-width: 860px;", max_width_css)
+
         if accent_color.upper() != "#001A57":
             current_html_example = current_html_example.replace("#001a57", accent_color)
             current_html_example = current_html_example.replace("#00256c", accent_color)
             if is_light_color:
-                current_html_example = current_html_example.replace("color: #ffffff;", f"color: {header_text_color};")
+                # Если фон светлый, текст на нем делаем черным
+                current_html_example = current_html_example.replace("color: #ffffff;", "color: #000000;")
                 current_html_example = current_html_example.replace(LOGO_URL, current_logo_url)
         
         system_msg = (
@@ -206,6 +253,11 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
             "Ваша задача — преобразовать входной текст объявления в HTML-карточку. "
             "В шапке обязательно должен быть логотип по ссылке: " + current_logo_url + ". "
             "Используйте структуру и CSS-стили из приведённого ниже примера. "
+            f"Ширина карточки должна быть: {max_width_css} "
+            f"{color_instruction}\n"
+            "ВАЖНО: Для предупреждений (attention) используйте ЖЕЛТЫЙ блок (background: #FFFBEB, color: #92400E, border-left: 4px solid #F59E0B).\n"
+            "ВАЖНО: Для критической информации (important/danger) используйте КРАСНЫЙ блок (background: #FEF2F2, color: #991B1B, border-left: 4px solid #EF4444).\n"
+            "Для обычной информации используйте нейтральный или зеленый блок. "
             "Не добавляйте пояснений, комментариев или лишних тегов. "
             f"{text_instruction}\n"
             "Верните ТОЛЬКО корректный JSON в формате: {\"type\": \"HTML\", \"content\": \"<div>...</div>\"}.\n\n"
@@ -297,6 +349,12 @@ with col_settings_2:
         format_func=lambda x: "🔵 Классический синий" if x == "#001A57" else "🟢 Лайм (#DFFF00)",
         help="Основной цвет заголовков и элементов дизайна"
     )
+    
+    width_option = st.selectbox(
+        "Ширина карточки",
+        ["Фиксированная (800px)", "На всю ширину (Auto)"],
+        help="Выберите ширину контейнера: 'Фиксированная' (800px) для компактного вида или 'На всю ширину' для адаптивности."
+    )
 
 user_text = st.text_area(
     "Введите текст объявления:",
@@ -311,7 +369,7 @@ if st.button("Сформировать HTML", type="primary"):
         with st.spinner("Генерация карточки..."):
             try:
                 client = get_nebius_client()
-                html_code = generate_hse_html(client, user_text, style_mode, accent_color, allow_text_edits)
+                html_code = generate_hse_html(client, user_text, style_mode, accent_color, allow_text_edits, width_option)
                 # Сохраняем в session_state чтобы не потерять при обновлении
                 st.session_state['generated_html'] = html_code
                 st.success("Карточка успешно создана!")
