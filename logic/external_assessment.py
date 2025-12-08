@@ -9,7 +9,7 @@ def load_students_from_supabase() -> pd.DataFrame:
     """Загрузка списка студентов из Supabase (все записи с пагинацией)"""
     try:
         # Используем новую generic функцию
-        all_data = fetch_all_from_supabase('students', filters={'курс': 'Курс 4'})
+        all_data = fetch_all_from_supabase('students', filters={'курс': ['Курс 2', 'Курс 3', 'Курс 4']})
         
         if all_data:
             df = pd.DataFrame(all_data)

@@ -56,7 +56,7 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
         HTML-код карточки
     """
     
-def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str) -> str:
+def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str, allow_text_edits: bool) -> str:
     """
     Генерация HTML-карточки через Nebius API
     
@@ -65,6 +65,7 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
         user_text: Текст объявления
         style_mode: "HTML с CSS" или "Чистый HTML"
         accent_color: HEX код основного цвета
+        allow_text_edits: Разрешить ли ИИ менять текст пользователя
         
     Returns:
         HTML-код карточки
@@ -82,83 +83,90 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
     # Выбираем логотип
     current_logo_url = LOGO_URL_BLACK if is_light_color else LOGO_URL
 
+    # Инструкция по работе с текстом
+    text_instruction = ""
+    if allow_text_edits:
+        text_instruction = (
+            "5. Контент: Текст пользователя МОЖНО и НУЖНО улучшать: исправлять ошибки, делать его более продающим, "
+            "разбивать на смысловые блоки, добавлять эмоциональные подзаголовки. "
+            "Если текст слишком короткий — разверните его, добавьте деталей, но не выдумывайте факты. "
+            "Сделайте красивую структуру с буллитами."
+        )
+    else:
+        text_instruction = (
+            "5. Контент: Текст пользователя ИЗМЕНЯТЬ ЗАПРЕЩЕНО. "
+            "Вставьте его ровно в том виде, в котором он пришел, не добавляя ничего от себя и не удаляя. "
+            "Можете только обернуть его в параграфы <p> или списки <ul>, если это явно список, "
+            "но сами слова и формулировки НЕ МЕНЯТЬ."
+        )
+
     # Логика для чистого HTML (теперь это Email-Safe HTML: Таблицы + Inline CSS)
     if style_mode == "Чистый HTML":
-        # Шаблон на основе примера пользователя
-        pure_html_template = f"""<!DOCTYPE html>
-<html>
+        # Улучшенный шаблон для писем
+        pure_html_template = f"""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Заголовок</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: Arial, Helvetica, sans-serif; color: #1f2937; line-height: 1.5;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff">
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: Arial, sans-serif;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#ffffff">
     <tr>
-      <td align="center" style="padding: 40px 16px;">
-        <!-- Основной контейнер -->
-        <table width="860" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+      <td align="center" style="padding: 20px 0;">
+        <!-- Основной контейнер 600px для писем -->
+        <table border="0" cellpadding="0" cellspacing="0" width="600" style="border-collapse: collapse; width: 600px; max-width: 600px; min-width: 320px; background-color: #ffffff;">
+          
           <!-- Хедер -->
           <tr>
-            <td bgcolor="{accent_color}" style="padding: 40px 32px 32px; text-align: center; border-top-left-radius: 0; border-top-right-radius: 0;">
-              <img src="{current_logo_url}" alt="Логотип Data Culture" width="57" height="57" style="display: block; margin: 0 auto 20px;">
-              <h1 style="margin: 0 0 12px; font-size: 24px; font-weight: bold; color: {header_text_color}; line-height: 1.2; letter-spacing: -0.02em;">
-                ЗАГОЛОВОК ОБЪЯВЛЕНИЯ
+            <td align="center" bgcolor="{accent_color}" style="padding: 40px 30px; border-radius: 12px 12px 0 0;">
+              <img src="{current_logo_url}" alt="Логотип" width="60" style="display: block; width: 60px; height: auto; margin-bottom: 20px; border: 0;" />
+              <h1 style="color: {header_text_color}; font-size: 24px; line-height: 32px; font-weight: bold; margin: 0 0 10px 0; font-family: Arial, sans-serif;">
+                ЗАГОЛОВОК
               </h1>
-              <p style="margin: 0; font-size: 18px; color: {header_text_color}; opacity: 0.9; line-height: 1.5;">
-                Краткое введение
+              <p style="color: {header_text_color}; font-size: 16px; line-height: 24px; margin: 0; opacity: 0.9; font-family: Arial, sans-serif;">
+                Вводный текст
               </p>
             </td>
           </tr>
 
-          <!-- Основная подложка -->
+          <!-- Основной контент -->
           <tr>
-            <td bgcolor="#F5F5F7" style="padding: 32px;">
-              <!-- Карточка 1: Текст -->
-              <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="margin-bottom: 24px; border: 1px solid #e2e8f5;">
+            <td bgcolor="#F5F5F7" style="padding: 30px; border-radius: 0 0 12px 12px;">
+              
+              <!-- Блок контента 1 -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#ffffff" style="border-radius: 8px; border: 1px solid #e5e7eb; border-collapse: separate;">
                 <tr>
-                  <td style="padding: 28px 32px; font-size: 17px; color: #1f2937;">
-                    Текст объявления...
+                  <td style="padding: 25px; font-size: 16px; line-height: 24px; color: #333333; font-family: Arial, sans-serif;">
+                    Основной текст...
+                  </td>
+                </tr>
+              </table>
+              <div style="height: 20px;"></div>
+
+              <!-- Блок контента 2 (список) -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#ffffff" style="border-radius: 8px; border: 1px solid #e5e7eb; border-collapse: separate;">
+                <tr>
+                  <td style="padding: 25px; font-size: 16px; line-height: 24px; color: #333333; font-family: Arial, sans-serif;">
+                    <h2 style="color: {accent_color}; font-size: 20px; font-weight: bold; margin: 0 0 15px 0;">Подзаголовок</h2>
+                    <ul style="margin: 0; padding-left: 20px;">
+                      <li style="margin-bottom: 10px;">Пункт 1</li>
+                      <li>Пункт 2</li>
+                    </ul>
+                  </td>
+                </tr>
+              </table>
+              <div style="height: 20px;"></div>
+
+              <!-- Футер / Подпись -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#ecfdf5" style="border-radius: 8px; border: 1px solid #86efac; border-collapse: separate;">
+                <tr>
+                  <td align="center" style="padding: 20px; font-size: 16px; line-height: 24px; color: #166534; font-family: Arial, sans-serif;">
+                    <strong>Команда Data Culture</strong>
                   </td>
                 </tr>
               </table>
 
-              <!-- Карточка 2: Список (если есть) -->
-              <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="margin-bottom: 24px; border: 1px solid #e2e8f5;">
-                <tr>
-                  <td style="padding: 28px 32px 32px; font-size: 17px; color: #1f2937;">
-                    <h2 style="margin: 0 0 20px; font-size: 22px; font-weight: bold; color: {accent_color};">
-                      Подзаголовок
-                    </h2>
-                    <table cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td width="12" valign="top" style="padding-right: 10px;">•</td>
-                        <td style="padding-bottom: 14px; line-height: 1.68;">Пункт списка</td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Карточка 3: Инфо-блок (если есть) -->
-              <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f0f4ff" style="margin-bottom: 24px; border: 1px solid #dbe4ff;">
-                <tr>
-                  <td style="padding: 24px 32px; font-size: 16px; color: #1e40af;">
-                    <strong>Важная информация:</strong><br>
-                    Текст информации.
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Карточка 4: Финальный блок -->
-              <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ecfdf5" style="border: 1px solid #86efac;">
-                <tr>
-                  <td style="padding: 32px; font-size: 18px; text-align: center; color: #166534;">
-                    <strong>Удачи в работе!</strong><br>
-                    <span style="font-size: 15px; opacity: 0.9;">Команда Data Culture всегда с вами</span>
-                  </td>
-                </tr>
-              </table>
             </td>
           </tr>
         </table>
@@ -169,30 +177,26 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
 </html>"""
 
         system_msg = (
-            "Вы — эксперт по верстке HTML-писем. "
-            "Ваша задача: Преобразовать текст в HTML-карточку, СТРОГО следуя предоставленному шаблону. "
-            "ШАБЛОН (используйте эту структуру, меняя только текст):\n"
+            "Вы — эксперт по верстке HTML-писем (Email HTML Development). "
+            "Ваша задача: Преобразовать текст в HTML-код, который идеально отображается в Outlook, Gmail и Apple Mail. "
+            "Используйте предоставленный шаблон как жесткую основу.\n\n"
+            "ШАБЛОН:\n"
             f"{pure_html_template}\n\n"
-            "ТРЕБОВАНИЯ:"
-            "1. Используйте ТОЛЬКО табличную верстку (как в шаблоне)."
-            "2. Используйте ТОЛЬКО инлайн-стили (как в шаблоне)."
-            "3. Логотип: используйте ссылку " + current_logo_url + " (в шаблоне она уже подставлена)."
-            f"4. Цвета: Основной цвет {accent_color}, Текст заголовка {header_text_color}."
-            "5. Контент: Разбейте входной текст на логические блоки (вступление, списки, важное) и поместите их в соответствующие карточки-таблицы."
-            "Верните JSON: {\"type\": \"HTML\", \"content\": \"<!DOCTYPE html><html>...</html>\"}."
+            "ТРЕБОВАНИЯ:\n"
+            "1. Используйте ТОЛЬКО табличную верстку (table, tr, td) как в шаблоне.\n"
+            "2. ВСЕ стили должны быть только inline (style=\"...\").\n"
+            "3. Логотип: используйте ссылку " + current_logo_url + "\n"
+            f"4. Цвета: Основной цвет {accent_color}, Текст заголовка {header_text_color}.\n"
+            f"{text_instruction}\n"
+            "6. Верните JSON: {\"type\": \"HTML\", \"content\": \"код...\"}."
         )
     else:
         # Логика для HTML с Inline CSS (Modern)
-        # Если выбран не стандартный синий цвет, делаем замену в примере
         if accent_color.upper() != "#001A57":
-            # Заменяем основные синие цвета на выбранный акцент
             current_html_example = current_html_example.replace("#001a57", accent_color)
             current_html_example = current_html_example.replace("#00256c", accent_color)
-            
-            # Если цвет светлый, меняем цвет текста в хедере
             if is_light_color:
                 current_html_example = current_html_example.replace("color: #ffffff;", f"color: {header_text_color};")
-                # И меняем логотип на черный
                 current_html_example = current_html_example.replace(LOGO_URL, current_logo_url)
         
         system_msg = (
@@ -201,6 +205,7 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
             "В шапке обязательно должен быть логотип по ссылке: " + current_logo_url + ". "
             "Используйте структуру и CSS-стили из приведённого ниже примера. "
             "Не добавляйте пояснений, комментариев или лишних тегов. "
+            f"{text_instruction}\n"
             "Верните ТОЛЬКО корректный JSON в формате: {\"type\": \"HTML\", \"content\": \"<div>...</div>\"}.\n\n"
             "Пример корректного вывода:\n"
             + str({"type": "HTML", "content": current_html_example})
@@ -275,6 +280,12 @@ with col_settings_1:
         ["HTML с CSS", "Чистый HTML"],
         help="Выберите 'Чистый HTML' для создания Email-safe верстки (таблицы + инлайн стили), которая корректно отображается в Outlook и других почтовых клиентах."
     )
+    
+    allow_text_edits = st.checkbox(
+        "Разрешить ИИ редактировать текст",
+        value=True,
+        help="Если включено, ИИ может улучшать формулировки, структурировать текст и исправлять ошибки. Если выключено, текст будет вставлен 'как есть', изменится только оформление."
+    )
 
 with col_settings_2:
     # Выбор цвета теперь доступен всегда
@@ -298,7 +309,7 @@ if st.button("Сформировать HTML", type="primary"):
         with st.spinner("Генерация карточки..."):
             try:
                 client = get_nebius_client()
-                html_code = generate_hse_html(client, user_text, style_mode, accent_color)
+                html_code = generate_hse_html(client, user_text, style_mode, accent_color, allow_text_edits)
                 # Сохраняем в session_state чтобы не потерять при обновлении
                 st.session_state['generated_html'] = html_code
                 st.success("Карточка успешно создана!")

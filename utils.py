@@ -40,7 +40,10 @@ def fetch_all_from_supabase(table_name: str, select_query: str = "*", filters: d
         
         if filters:
             for key, value in filters.items():
-                query = query.eq(key, value)
+                if isinstance(value, (list, tuple)):
+                    query = query.in_(key, value)
+                else:
+                    query = query.eq(key, value)
                 
         response = query.range(offset, offset + page_size - 1).execute()
         
