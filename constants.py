@@ -2,7 +2,8 @@
 DataCulture Platform - Constants
 """
 
-LOGO_URL = "https://raw.githubusercontent.com/TimPad/DC_platform_var2/main/dc.png"
+LOGO_URL = "https://raw.githubusercontent.com/TimPad/html/main/DC_green.svg"
+LOGO_URL_PNG = "https://raw.githubusercontent.com/TimPad/DC_platform_var2/main/dc.png"
 LOGO_URL_BLACK = "https://raw.githubusercontent.com/TimPad/DC_platform_var2/main/icons/DC_black.svg"
 
 HTML_EXAMPLE = f"""<div style="font-family: 'Inter', 'Segoe UI', Roboto, Arial, sans-serif; max-width: 860px; margin: 40px auto; background: #ffffff; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.08); border: 1px solid #e5ebf8; overflow: hidden;">

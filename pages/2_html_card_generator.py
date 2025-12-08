@@ -8,7 +8,7 @@ import json
 import html
 import streamlit.components.v1 as components
 from utils import icon, apply_custom_css, get_nebius_client
-from constants import LOGO_URL, LOGO_URL_BLACK, HTML_EXAMPLE, SYSTEM_MESSAGE
+from constants import LOGO_URL, LOGO_URL_BLACK, LOGO_URL_PNG, HTML_EXAMPLE, SYSTEM_MESSAGE
 
 # Применяем кастомные стили
 apply_custom_css()
@@ -80,8 +80,8 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
         is_light_color = True
     header_text_color = "#000000" if is_light_color else "#ffffff"
     
-    # Выбираем логотип
-    current_logo_url = LOGO_URL_BLACK if is_light_color else LOGO_URL
+    # Выбираем логотип (PNG для дефолтного/синего фона чтобы не было вложений, SVG для черного, если нет PNG)
+    current_logo_url = LOGO_URL_BLACK if is_light_color else LOGO_URL_PNG
 
     # Инструкция по работе с текстом
     text_instruction = ""
