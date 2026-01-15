@@ -5,9 +5,12 @@ UPSERT в таблицу students
 
 import streamlit as st
 import pandas as pd
-import time
-from io import StringIO
 from utils import icon, apply_custom_css, get_supabase_client
+from logic.student_management import (
+    load_student_list_file, 
+    upload_students_to_supabase, 
+    load_students_from_supabase
+)
 
 # Применяем кастомные стили
 apply_custom_css()
@@ -36,192 +39,6 @@ st.markdown("""
 - Группа
 - Курс
 """)
-
-def upload_students_to_supabase(supabase, student_data):
-    """Загрузка данных студентов в таблицу students с использованием оптимизированного UPSERT"""
-    try:
-        st.info("👥 Загрузка данных студентов (UPSERT)...")
-        records_for_upsert = []
-        processed_emails = set()
-        
-        for _, row in student_data.iterrows():
-            email = str(row.get('Корпоративная почта', '')).strip().lower()
-            if not email or '@edu.hse.ru' not in email:
-                continue
-            if email in processed_emails:
-                continue
-            processed_emails.add(email)
-                
-            student_record = {
-                'корпоративная_почта': email,
-                'фио': str(row.get('ФИО', 'Неизвестно')).strip() or 'Неизвестно',
-                'филиал_кампус': str(row.get('Филиал (кампус)', '')) if pd.notna(row.get('Филиал (кампус)')) and str(row.get('Филиал (кампус)', '')).strip() else None,
-                'факультет': str(row.get('Факультет', '')) if pd.notna(row.get('Факультет')) and str(row.get('Факультет', '')).strip() else None,
-                'образовательная_программа': str(row.get('Образовательная программа', '')) if pd.notna(row.get('Образовательная программа')) and str(row.get('Образовательная программа', '')).strip() else None,
-                'версия_образовательной_программы': str(row.get('Версия образовательной программы', '')) if pd.notna(row.get('Версия образовательной программы')) and str(row.get('Версия образовательной программы', '')).strip() else None,
-                'группа': str(row.get('Группа', '')) if pd.notna(row.get('Группа')) and str(row.get('Группа', '')).strip() else None,
-                'курс': str(row.get('Курс', '')) if pd.notna(row.get('Курс')) and str(row.get('Курс', '')).strip() else None,
-                'уровень_образования': str(row.get('Уровень образования', '')) if pd.notna(row.get('Уровень образования')) and str(row.get('Уровень образования', '')).strip() else None,
-            }
-            records_for_upsert.append(student_record)
-        
-        if not records_for_upsert:
-            st.info("Нет записей для обработки")
-            return True
-        
-        st.info(f"Подготовлено {len(records_for_upsert)} записей для UPSERT")
-        batch_size = 200
-        total_processed = 0
-        
-        for i in range(0, len(records_for_upsert), batch_size):
-            batch = records_for_upsert[i:i + batch_size]
-            batch_num = (i // batch_size) + 1
-            total_batches = ((len(records_for_upsert) - 1) // batch_size) + 1
-            
-            try:
-                result = supabase.table('students').upsert(
-                    batch,
-                    on_conflict='корпоративная_почта',
-                    ignore_duplicates=False,
-                    returning='minimal'
-                ).execute()
-                total_processed += len(batch)
-                st.success(f"Батч {batch_num}/{total_batches}: обработано {len(batch)} записей")
-            except Exception as e:
-                error_str = str(e)
-                if any(pat in error_str.lower() for pat in ["connection", "timeout", "ssl", "eof"]):
-                    st.warning(f"Сетевая ошибка в батче {batch_num}, повтор...")
-                    time.sleep(2)
-                    try:
-                        result = supabase.table('students').upsert(batch, on_conflict='корпоративная_почта').execute()
-                        total_processed += len(batch)
-                        st.success(f"Батч {batch_num} (после повтора)")
-                    except Exception as retry_error:
-                        st.error(f"Батч {batch_num} не удался после повтора: {retry_error}")
-                        return False
-                else:
-                    st.error(f"Ошибка в батче {batch_num}: {e}")
-                    return False
-        
-        st.success(f"UPSERT завершён! Обработано {total_processed} записей")
-        return True
-    except Exception as e:
-        st.error(f"Критическая ошибка UPSERT студентов: {e}")
-        return False
-
-def load_student_list_file(uploaded_file) -> pd.DataFrame:
-    """Загрузка списка студентов из файла Excel или CSV"""
-    try:
-        file_name = uploaded_file.name.lower()
-        if file_name.endswith(('.xlsx', '.xls')):
-            df = pd.read_excel(uploaded_file)
-        elif file_name.endswith('.csv'):
-            content = uploaded_file.getvalue()
-            try:
-                df = pd.read_csv(StringIO(content.decode('utf-16')), sep='\t')
-            except (UnicodeDecodeError, pd.errors.ParserError):
-                try:
-                    df = pd.read_csv(StringIO(content.decode('utf-8')))
-                except UnicodeDecodeError:
-                    df = pd.read_csv(StringIO(content.decode('cp1251')))
-        else:
-            st.error("Неподдерживаемый формат файла")
-            return pd.DataFrame()
-
-        required_columns = {
-            'ФИО': ['фио', 'фio', 'имя', 'name'],
-            'Корпоративная почта': ['адрес электронной почты', 'корпоративная почта', 'email', 'почта', 'e-mail'],
-            'Филиал (кампус)': ['филиал', 'кампус', 'campus'],
-            'Факультет': ['факультет', 'faculty'],
-            'Образовательная программа': ['образовательная программа', 'программа', 'educational program'],
-            'Версия образовательной программы': ['версия образовательной программы', 'версия программы', 'program version', 'version'],
-            'Группа': ['группа', 'group'],
-            'Курс': ['курс', 'course'],
-            'Уровень образования': ['уровень образования', 'уровень', 'level', 'образование']
-        }
-
-        found_columns = {}
-        df_columns_lower = [str(col).lower().strip() for col in df.columns]
-        for target_col, possible_names in required_columns.items():
-            for col_idx, col_name in enumerate(df_columns_lower):
-                if any(possible_name in col_name for possible_name in possible_names):
-                    found_columns[target_col] = df.columns[col_idx]
-                    break
-
-        result_df = pd.DataFrame()
-        for target_col, source_col in found_columns.items():
-            if source_col in df.columns:
-                result_df[target_col] = df[source_col]
-
-        if 'Данные о пользователе' in df.columns:
-            user_data = df['Данные о пользователе'].astype(str)
-            parsed_data = user_data.str.split(';', expand=True)
-            if len(parsed_data.columns) >= 4:
-                result_df['Факультет'] = parsed_data[0]
-                result_df['Образовательная программа'] = parsed_data[1] 
-                result_df['Курс'] = parsed_data[2]
-                result_df['Группа'] = parsed_data[3]
-
-        for required_col in required_columns.keys():
-            if required_col not in result_df.columns:
-                if required_col == 'ФИО':
-                    result_df[required_col] = None
-                else:
-                    result_df[required_col] = ''
-
-        if 'Корпоративная почта' in result_df.columns:
-            result_df = result_df[result_df['Корпоративная почта'].astype(str).str.contains('@edu.hse.ru', na=False)]
-            result_df['Корпоративная почта'] = pd.Series(result_df['Корпоративная почта']).astype(str).str.lower().str.strip()
-        return result_df
-    except Exception as e:
-        st.error(f"Ошибка загрузки списка студентов: {e}")
-        return pd.DataFrame()
-
-@st.cache_data(ttl=300)
-def load_students_from_supabase_cached():
-    """Загрузка списка студентов из Supabase с кэшированием"""
-    try:
-        supabase = get_supabase_client()
-        
-        all_data = []
-        page_size = 1000
-        offset = 0
-        
-        while True:
-            response = supabase.table('students').select('*').range(offset, offset + page_size - 1).execute()
-            
-            if response.data:
-                all_data.extend(response.data)
-                if len(response.data) < page_size:
-                    break
-                offset += page_size
-            else:
-                break
-        
-        if all_data:
-            df = pd.DataFrame(all_data)
-            
-            column_mapping = {
-                'корпоративная_почта': 'Адрес электронной почты',
-                'фио': 'ФИО',
-                'филиал_кампус': 'Филиал (кампус)',
-                'факультет': 'Факультет',
-                'образовательная_программа': 'Образовательная программа',
-                'версия_образовательной_программы': 'Версия образовательной программы',
-                'группа': 'Группа',
-                'курс': 'Курс',
-                'уровень_образования': 'Уровень образования'
-            }
-            
-            existing_columns = {k: v for k, v in column_mapping.items() if k in df.columns}
-            df = df.rename(columns=existing_columns)
-            
-            return df
-        else:
-            return pd.DataFrame()
-    except Exception as e:
-        st.warning(f"Не удалось загрузить данные: {str(e)}")
-        return pd.DataFrame()
 
 # Проверка пароля
 st.markdown("---")
@@ -326,7 +143,7 @@ else:
 
     # Загружаем данные для фильтрации
     try:
-        all_students = load_students_from_supabase_cached()
+        all_students = load_students_from_supabase() # Без фильтров = загрузить ВСЕХ
         if not all_students.empty:
             # Создаем фильтры
             st.subheader("Фильтры для скачивания")
@@ -338,7 +155,7 @@ else:
             course_options = ['Все'] + sorted(all_students['Курс'].dropna().unique().tolist()) if 'Курс' in all_students.columns else ['Все']
             level_options = ['Все'] + sorted(all_students['Уровень образования'].dropna().unique().tolist()) if 'Уровень образования' in all_students.columns else ['Все']
             
-            # Создаем колонки для фильтров (делаем 3 колонки чтобы не было слишком узко)
+            # Создаем колонки для фильтров
             col1, col2, col3 = st.columns(3)
             col4, col5, col6 = st.columns(3)
             
@@ -372,7 +189,6 @@ else:
                     st.session_state["filter_level"] = 'Все'
                     st.rerun()
             
-            # Пустая колонка для симметрии
             with col6:
                 st.write("")
             
@@ -495,7 +311,7 @@ else:
     # Проверка текущего состояния базы
     with st.expander("Текущее состояние базы данных"):
         try:
-            current_students = load_students_from_supabase_cached()
+            current_students = load_students_from_supabase()
             if current_students.empty:
                 st.info("Таблица students пуста или не создана")
             else:

@@ -39,13 +39,14 @@ st.markdown("""
 """)
 
 from logic.external_assessment import (
-    load_students_from_supabase,
     load_existing_peresdachi,
     load_student_io_from_supabase,
     save_to_supabase,
     get_new_records_from_dataframe,
-    process_external_assessment
+    process_external_assessment,
+    process_project_assessment
 )
+from logic.student_management import load_students_from_supabase
 
 # Проверка подключения к Supabase
 try:
@@ -57,200 +58,289 @@ except Exception as e:
 
 st.markdown("---")
 
-# Загрузка файла с оценками
-st.subheader("Загрузка файла с оценками")
-grades_file = st.file_uploader(
-    "Выберите файл с оценками (external_assessment)",
-    type=['xlsx', 'xls'],
-    key="external_grades_file",
-    help="Файл должен содержать колонки: Адрес электронной почты, Тест:Входное/Промежуточное/Итоговое тестирование (Значение)"
-)
+# Используем табы для разделения функционала
+tab_tests, tab_projects = st.tabs(["Пересдачи (Тесты)", "Внешнее измерение (Проекты)"])
 
-if grades_file:
-    try:
-        with st.spinner("Загрузка файла с оценками..."):
-            grades_df = pd.read_excel(grades_file)
+# --- ВКЛАДКА 1: ПЕРЕСДАЧИ (ТЕСТЫ) ---
+with tab_tests:
+    st.subheader("Загрузка файла с оценками (Тесты)")
+    grades_file = st.file_uploader(
+        "Выберите файл с оценками (external_assessment)",
+        type=['xlsx', 'xls'],
+        key="external_grades_file",
+        help="Файл должен содержать колонки: Адрес электронной почты, Тест:Входное/Промежуточное/Итоговое тестирование (Значение)"
+    )
 
-        st.success("Файл с оценками успешно загружен!")
+    if grades_file:
+        try:
+            with st.spinner("Загрузка файла с оценками..."):
+                grades_df = pd.read_excel(grades_file)
 
-        # Загрузка студентов из Supabase
-        with st.spinner("Загрузка списка студентов из Supabase..."):
-            students_df = load_students_from_supabase()
+            st.success("Файл с оценками успешно загружен!")
 
-        if students_df.empty:
-            st.error("Список студентов пуст. Загрузите данные в таблицу `students` в Supabase.")
-            st.stop()
-        else:
-            st.success(f"Загружено {len(students_df)} студентов из Supabase")
+            # Загрузка студентов
+            with st.spinner("Загрузка списка студентов из Supabase..."):
+                students_df = load_students_from_supabase(filters={'курс': ['Курс 2', 'Курс 3', 'Курс 4']})
 
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Записей с оценками", len(grades_df))
-        with col2:
-            st.metric("Студентов в базе", len(students_df))
-        with col3:
-            st.metric("Колонок в оценках", len(grades_df.columns))
+            if students_df.empty:
+                st.error("Список студентов пуст. Загрузите данные в таблицу `students` в Supabase.")
+            else:
+                st.success(f"Загружено {len(students_df)} студентов из Supabase")
 
-        col_preview1, col_preview2 = st.columns(2)
-        with col_preview1:
-            with st.expander("Предпросмотр файла с оценками"):
-                st.dataframe(grades_df.head(), use_container_width=True)
+            col1, col2, col3 = st.columns(3)
+            with col1: st.metric("Записей с оценками", len(grades_df))
+            with col2: st.metric("Студентов в базе", len(students_df))
+            with col3: st.metric("Колонок в оценках", len(grades_df.columns))
 
-        with col_preview2:
-            with st.expander("Предпросмотр списка студентов"):
-                st.dataframe(students_df.head(10), use_container_width=True)
+            col_preview1, col_preview2 = st.columns(2)
+            with col_preview1:
+                with st.expander("Предпросмотр файла с оценками"):
+                    st.dataframe(grades_df.head(), use_container_width=True)
 
-        if st.button("Обработать данные", type="primary", key="process_btn"):
-            with st.spinner("Обработка пересдач..."):
-                try:
-                    result_df = process_external_assessment(grades_df, students_df)
+            with col_preview2:
+                with st.expander("Предпросмотр списка студентов"):
+                    st.dataframe(students_df.head(10), use_container_width=True)
 
-                    if result_df.empty:
-                        st.error("Не удалось обработать данные. Проверьте структуру файла.")
-                    else:
-                        st.success("Обработка успешно завершена!")
+            # Кнопка запуска обработки
+            if st.button("Обработать данные (Тесты)", type="primary", key="process_btn_tests"):
+                with st.spinner("Обработка пересдач..."):
+                    try:
+                        result_df = process_external_assessment(grades_df, students_df)
 
-                        # Определяем новые записи ДО удаления дубликатов (для отображения до очистки)
-                        # Но используем их только после очистки
-                        display_new_records_uncleaned = get_new_records_from_dataframe(result_df)
-                        new_count_uncleaned = len(display_new_records_uncleaned)
-                        total_count_uncleaned = len(result_df)
+                        if result_df.empty:
+                            st.error("Не удалось обработать данные. Проверьте структуру файла.")
+                        else:
+                            # 1. Сохраняем результат в session_state
+                            st.session_state['result_df_tests'] = result_df
+                            
+                            # 2. Логика обработки дубликатов и сохранения
+                            # Определяем новые записи
+                            display_new_records_uncleaned = get_new_records_from_dataframe(result_df)
+                            new_count_uncleaned = len(display_new_records_uncleaned)
+                            total_count_uncleaned = len(result_df)
 
-                        # Проверка и удаление дубликатов В result_df ПЕРЕД сохранением
-                        with st.spinner("Проверка и удаление дубликатов в данных для сохранения..."):
+                            # Проверка и удаление дубликатов
                             conflict_cols = ["Адрес электронной почты", "Наименование дисциплины"]
-                            initial_count_result = len(result_df)
-                            # Удаляем дубликаты в result_df по ключевым полям
                             result_df_cleaned = result_df.drop_duplicates(subset=conflict_cols, keep='first')
-                            final_count_result = len(result_df_cleaned)
-                            duplicates_removed_result = initial_count_result - final_count_result
+                            duplicates_removed_result = total_count_uncleaned - len(result_df_cleaned)
+                            
                             if duplicates_removed_result > 0:
-                                st.warning(f"Найдено и удалено {duplicates_removed_result} дубликатов в наборе данных для сохранения (result_df).")
-                                # Обновляем result_df, с которым будем работать дальше
                                 result_df = result_df_cleaned
-                                # Также пересчитываем display_new_records на основе очищенного result_df
                                 display_new_records = get_new_records_from_dataframe(result_df)
                                 new_count = len(display_new_records)
-                                total_count = len(result_df) # Общее количество тоже обновляется, если были дубликаты
+                                total_count = len(result_df)
                             else:
-                                st.info("Дубликатов в наборе данных для сохранения (result_df) не обнаружено.")
-                                # Если дубликатов не было, используем изначальные значения
                                 display_new_records = display_new_records_uncleaned
                                 new_count = new_count_uncleaned
                                 total_count = total_count_uncleaned
 
-                            # Проверим, есть ли дубликаты в display_new_records (хотя маловероятно, если get_new_records_from_dataframe корректен)
-                            # Используем уже potentially обновлённый display_new_records
-                            initial_count_new = len(display_new_records)
-                            display_new_records_cleaned = display_new_records.drop_duplicates(subset=conflict_cols, keep='first')
-                            final_count_new = len(display_new_records_cleaned)
-                            duplicates_removed_new = initial_count_new - final_count_new
-                            if duplicates_removed_new > 0:
-                                st.warning(f"Найдено и удалено {duplicates_removed_new} дубликатов в наборе 'новых' записей перед сохранением.")
-                                display_new_records = display_new_records_cleaned
-                                new_count = len(display_new_records) # Пересчитываем количество новых
+                            display_new_records = display_new_records.drop_duplicates(subset=conflict_cols, keep='first')
+                            
+                            # Сохраняем обработанное состояние для отображения
+                            st.session_state['tests_processed_state'] = {
+                                'result_df': result_df,
+                                'display_new_records': display_new_records,
+                                'total_count': total_count,
+                                'new_count': new_count,
+                                'duplicates_removed': duplicates_removed_result,
+                                'save_success': False, # Будет обновлено при сохранении
+                                'processed_at': datetime.now()
+                            }
 
-
-                        # Сохранение в Supabase
-                        with st.spinner("Сохранение в Supabase..."):
+                            # Автоматическое сохранение при обработке
                             save_success = save_to_supabase(display_new_records)
-                            if save_success:
-                                st.success(f"Сохранено в Supabase: {new_count} новых записей из {total_count} (после удаления дубликатов из исходного набора).")
-                                lottie_success = load_lottie_url(LOTTIE_SUCCESS_URL)
-                                if lottie_success:
-                                    st_lottie(lottie_success, height=150, key="success_anim")
+                            st.session_state['tests_processed_state']['save_success'] = save_success
+                            
+                    except Exception as e:
+                        st.error(f"Ошибка: {str(e)}")
+                        # st.exception(e)
+
+            # ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ ИЗ SESSION STATE
+            if 'tests_processed_state' in st.session_state:
+                state = st.session_state['tests_processed_state']
+                
+                st.success("Обработка успешно завершена!")
+                
+                if state['duplicates_removed'] > 0:
+                     st.warning(f"Удалено {state['duplicates_removed']} дубликатов.")
+
+                if state['save_success']:
+                    st.success(f"Сохранено новых записей: {state['new_count']}.") # из {state['total_count']}
+                    lottie_success = load_lottie_url(LOTTIE_SUCCESS_URL)
+                    if lottie_success:
+                        st_lottie(lottie_success, height=150, key="success_anim_tests", loop=False) # LOOP FALSE
+                else:
+                    st.error("Ошибка при сохранении данных в Supabase")
+
+                # Статистика
+                st.subheader("Результаты")
+                col1, col2, col3 = st.columns(3)
+                with col1: st.metric("Всего", state['total_count'])
+                with col2: st.metric("Новых", state['new_count'])
+                with col3: st.metric("Старых", state['total_count'] - state['new_count'])
+
+                # Табы для скачивания
+                subtab1, subtab2 = st.tabs(["Все данные", "Только новые"])
+                current_date = datetime.now().strftime('%d-%m-%Y')
+                
+                with subtab1:
+                    st.dataframe(state['result_df'], use_container_width=True)
+                    output_all = io.BytesIO()
+                    with pd.ExcelWriter(output_all, engine='openpyxl') as writer:
+                        state['result_df'].to_excel(writer, index=False)
+                    output_all.seek(0)
+                    st.download_button("Скачать все (XLSX)", output_all, f"Tests_All_{current_date}.xlsx", key="dl_all_tests")
+
+                with subtab2:
+                    if state['display_new_records'].empty:
+                        st.info("Новых нет")
+                    else:
+                        st.dataframe(state['display_new_records'], use_container_width=True)
+                        output_new = io.BytesIO()
+                        with pd.ExcelWriter(output_new, engine='openpyxl') as writer:
+                            state['display_new_records'].to_excel(writer, index=False)
+                        output_new.seek(0)
+                        st.download_button("Скачать новые (XLSX)", output_new, f"Tests_New_{current_date}.xlsx", key="dl_new_tests")
+
+        except Exception as e:
+            st.error(f"Ошибка файла: {str(e)}")
+    else:
+        st.info("Загрузите файл XLSX для обработки тестов")
+
+# --- ВКЛАДКА 2: ВНЕШНЕЕ ИЗМЕРЕНИЕ (ПРОЕКТЫ) ---
+with tab_projects:
+    st.subheader("Загрузка файла с оценками (Проекты)")
+    project_file = st.file_uploader(
+        "Выберите файл с оценками (CSV)",
+        type=['csv'],
+        key="project_grades_file",
+        help="Файл CSV с колонками 'Задание:...' и 'Адрес электронной почты'"
+    )
+
+    if project_file:
+        try:
+            with st.spinner("Загрузка CSV файла..."):
+                project_grades_df = pd.read_csv(project_file)
+            
+            st.success("Файл успешно загружен!")
+            
+            with st.spinner("Загрузка студентов..."):
+                students_df = load_students_from_supabase(filters={'курс': ['Курс 2', 'Курс 3', 'Курс 4']})
+            
+            if students_df.empty:
+                st.error("Список студентов пуст.")
+            else:
+                col1, col2 = st.columns(2)
+                with col1: st.metric("Строк в файле", len(project_grades_df))
+                with col2: st.metric("Студентов в базе", len(students_df))
+
+                with st.expander("Предпросмотр CSV"):
+                    st.dataframe(project_grades_df.head(), use_container_width=True)
+
+                if st.button("Обработать данные (Проекты)", type="primary", key="process_btn_projects"):
+                     with st.spinner("Обработка проектов..."):
+                        try:
+                            result_df = process_project_assessment(project_grades_df, students_df)
+                            
+                            if result_df.empty:
+                                st.error("Результат пуст. Проверьте соответствие колонок (email, задания).")
                             else:
-                                st.error("Ошибка при сохранении данных в Supabase")
-                                st.stop()  # Прерываем, если не удалось сохранить
+                                # 1. Сохраняем в session_state
+                                st.session_state['result_df_projects'] = result_df
+                                
+                                # 2. Обработка дублей
+                                display_new_records_uncleaned = get_new_records_from_dataframe(result_df)
+                                new_count_uncleaned = len(display_new_records_uncleaned)
+                                total_count_uncleaned = len(result_df)
 
-                        # Статистика (обновляется с учётом удаления дубликатов)
-                        st.subheader("Результаты обработки (после удаления дубликатов)")
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Всего обработано (без дублей)", total_count)
-                        with col2:
-                            st.metric("Новых записей (без дублей)", new_count)
-                        with col3:
-                            existing_count = total_count - new_count
-                            st.metric("Уже существовало", existing_count)
+                                conflict_cols = ["Адрес электронной почты", "Наименование дисциплины"]
+                                result_df_cleaned = result_df.drop_duplicates(subset=conflict_cols, keep='first')
+                                duplicates_removed = total_count_uncleaned - len(result_df_cleaned)
+                                
+                                if duplicates_removed > 0:
+                                    result_df = result_df_cleaned
+                                    display_new_records = get_new_records_from_dataframe(result_df)
+                                else:
+                                    display_new_records = display_new_records_uncleaned
+                                
+                                display_new_records = display_new_records.drop_duplicates(subset=conflict_cols, keep='first')
+                                new_count = len(display_new_records)
+                                total_count = len(result_df)
 
-                        # Предпросмотр
-                        tab1, tab2 = st.tabs(["Все обработанные данные", "Только новые записи"])
+                                # Сохранение состояния
+                                st.session_state['projects_processed_state'] = {
+                                    'result_df': result_df,
+                                    'display_new_records': display_new_records,
+                                    'total_count': total_count,
+                                    'new_count': new_count,
+                                    'duplicates_removed': duplicates_removed,
+                                    'save_success': False,
+                                    'processed_at': datetime.now()
+                                }
 
-                        with tab1:
-                            st.dataframe(result_df, use_container_width=True)
+                                save_success = save_to_supabase(display_new_records)
+                                st.session_state['projects_processed_state']['save_success'] = save_success
 
-                            output_all = io.BytesIO()
-                            with pd.ExcelWriter(output_all, engine='openpyxl') as writer:
-                                result_df.to_excel(writer, index=False, sheet_name='Все пересдачи')
-                            output_all.seek(0)
+                        except Exception as e:
+                            st.error(f"Ошибка: {str(e)}")
+                            st.exception(e)
 
-                            current_date = datetime.now().strftime('%d-%m-%Y')
-                            download_filename_all = f"Пересдачи_все_{current_date}.xlsx"
+                # ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ (ПРОЕКТЫ)
+                if 'projects_processed_state' in st.session_state:
+                    state = st.session_state['projects_processed_state']
+                    
+                    st.success("Обработка завершена!")
+                    
+                    if state['duplicates_removed'] > 0:
+                         st.warning(f"Удалено {state['duplicates_removed']} дубликатов.")
 
-                            st.download_button(
-                                label="Скачать все записи (XLSX)",
-                                data=output_all.getvalue(),
-                                file_name=download_filename_all,
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                key="download_all"
-                            )
+                    if state['save_success']:
+                        st.success(f"Сохранено новых записей: {state['new_count']}")
+                        lottie_success = load_lottie_url(LOTTIE_SUCCESS_URL)
+                        if lottie_success:
+                            st_lottie(lottie_success, height=150, key="success_anim_projects", loop=False) # LOOP FALSE
+                    else:
+                        st.error("Ошибка сохранения")
 
-                        with tab2:
-                            if display_new_records.empty:
-                                st.info("Новых записей нет. Все данные уже были в базе.")
-                            else:
-                                st.dataframe(display_new_records, use_container_width=True)
+                    # Статистика и скачивание
+                    st.subheader("Результаты")
+                    col1, col2 = st.columns(2)
+                    with col1: st.metric("Всего", state['total_count'])
+                    with col2: st.metric("Новых", state['new_count'])
 
-                                output_new = io.BytesIO()
-                                with pd.ExcelWriter(output_new, engine='openpyxl') as writer:
-                                    display_new_records.to_excel(writer, index=False, sheet_name='Новые пересдачи')
-                                output_new.seek(0)
+                    subtab1, subtab2 = st.tabs(["Все данные", "Только новые"])
+                    current_date = datetime.now().strftime('%d-%m-%Y')
 
-                                download_filename_new = f"Пересдачи_новые_{current_date}.xlsx"
+                    with subtab1:
+                        st.dataframe(state['result_df'], use_container_width=True)
+                        output_all = io.BytesIO()
+                        with pd.ExcelWriter(output_all, engine='openpyxl') as writer:
+                            state['result_df'].to_excel(writer, index=False)
+                        output_all.seek(0)
+                        st.download_button("Скачать все (XLSX)", output_all, f"Projects_All_{current_date}.xlsx", key="dl_all_projects")
+                    
+                    with subtab2:
+                        if state['display_new_records'].empty:
+                            st.info("Новых записей нет")
+                        else:
+                            st.dataframe(state['display_new_records'], use_container_width=True)
+                            output_new = io.BytesIO()
+                            with pd.ExcelWriter(output_new, engine='openpyxl') as writer:
+                                state['display_new_records'].to_excel(writer, index=False)
+                            output_new.seek(0)
+                            st.download_button("Скачать новые (XLSX)", output_new, f"Projects_New_{current_date}.xlsx", key="dl_new_projects")
 
-                                st.download_button(
-                                    label="Скачать только новые записи (XLSX)",
-                                    data=output_new.getvalue(),
-                                    file_name=download_filename_new,
-                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                    key="download_new"
-                                )
+        except Exception as e:
+            st.error(f"Ошибка чтения файла: {str(e)}")
+    else:
+        st.info("Загрузите CSV файл для обработки проектов")
 
-                        # Дополнительная статистика
-                        with st.expander("Статистика по обработке"):
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.write("**Распределение по дисциплинам:**")
-                                if 'Наименование дисциплины' in result_df.columns:
-                                    discipline_counts = result_df['Наименование дисциплины'].value_counts()
-                                    st.dataframe(discipline_counts)
 
-                            with col2:
-                                st.write("**Уникальные студенты:**")
-                                if 'ФИО' in result_df.columns:
-                                    unique_students = result_df['ФИО'].nunique()
-                                    st.metric("Уникальных студентов", unique_students)
-
-                except Exception as e:
-                    st.error(f"Ошибка при обработке: {str(e)}")
-                    st.exception(e)
-
-    except Exception as e:
-        st.error(f"Ошибка при загрузке файла: {str(e)}")
-        st.exception(e)
-
-else:
-    st.info("Загрузите файл с оценками для начала работы")
-    
-    # Показываем текущее состояние базы данных
-    with st.expander("Текущее состояние базы данных"):
-        existing_peresdachi = load_existing_peresdachi()
-        if existing_peresdachi.empty:
-            st.info("Таблица peresdachi пуста или не создана")
-            lottie_empty = load_lottie_url(LOTTIE_EMPTY_URL)
-            if lottie_empty:
-                st_lottie(lottie_empty, height=200, key="empty_anim")
-        else:
-            st.metric("Записей в таблице peresdachi", len(existing_peresdachi))
-            st.dataframe(existing_peresdachi.head(10), use_container_width=True)
+# Общая инфо панель внизу (вне табов)
+with st.expander("Текущее состояние базы данных (peresdachi)"):
+    existing_peresdachi = load_existing_peresdachi()
+    if existing_peresdachi.empty:
+        st.info("База пуста")
+    else:
+        st.metric("Всего записей", len(existing_peresdachi))
+        st.dataframe(existing_peresdachi.head(10), use_container_width=True)

@@ -5,37 +5,6 @@ import pandas as pd
 import streamlit as st
 from utils import get_supabase_client, fetch_all_from_supabase
 
-def load_students_from_supabase() -> pd.DataFrame:
-    """Загрузка списка студентов из Supabase (все записи с пагинацией)"""
-    try:
-        # Используем новую generic функцию
-        all_data = fetch_all_from_supabase('students', filters={'курс': ['Курс 2', 'Курс 3', 'Курс 4']})
-        
-        if all_data:
-            df = pd.DataFrame(all_data)
-            
-            # Переименование колонок из формата Supabase в требуемый формат
-            column_mapping = {
-                'корпоративная_почта': 'Адрес электронной почты',
-                'фио': 'ФИО',
-                'филиал_кампус': 'Филиал (кампус)',
-                'факультет': 'Факультет',
-                'образовательная_программа': 'Образовательная программа',
-                'версия_образовательной_программы': 'Версия образовательной программы',
-                'группа': 'Группа',
-                'курс': 'Курс'
-            }
-            
-            existing_columns = {k: v for k, v in column_mapping.items() if k in df.columns}
-            df = df.rename(columns=existing_columns)
-            
-            return df
-        else:
-            st.warning("Таблица students пуста или нет студентов на Курсе 4 в Supabase")
-            return pd.DataFrame()
-    except Exception as e:
-        st.error(f"Ошибка при загрузке студентов из Supabase: {str(e)}")
-        return pd.DataFrame()
 
 def load_existing_peresdachi() -> pd.DataFrame:
     """Загрузка существующих записей из таблицы peresdachi"""
@@ -299,5 +268,151 @@ def process_external_assessment(grades_df: pd.DataFrame, students_df: pd.DataFra
         st.success(f"Проверка peresdachi завершена. Найдено {len(existing_peresdachi_df)} записей. Оценки обновлены при совпадении.")
     else:
         st.info("Таблица peresdachi пуста, используются текущие оценки.")
+
+    return result_df
+
+def process_project_assessment(grades_df: pd.DataFrame, students_df: pd.DataFrame) -> pd.DataFrame:
+    """Обработка внешнего измерения (Проекты)"""
+    
+    # Шаг 1: Очистка и извлечение оценок
+    project_columns_names = [
+        "Задание:Гуманитарные науки (Значение)",
+        "Задание:Социально-экономические науки (Значение)",
+        "Задание:Естественные науки (Значение)",
+        "Задание:Общее: интерактивная история (Значение)",
+        "Задание:Интерактивная история: Расширенная версия (Значение)"
+    ]
+    
+    # Определяем, какие колонки есть в файле
+    existing_project_columns = [col for col in project_columns_names if col in grades_df.columns]
+    
+    if not existing_project_columns:
+        st.warning("Не найдены колонки с оценками за проект (Задание:...). Проверьте файл.")
+        # Если колонок нет, все равно продолжаем, но оценки будут NaN (или можно вернуть пустой df)
+        # В данном случае лучше вернуть пустой df или ошибку, иначе нет смысла
+        return pd.DataFrame()
+
+    # Функция для конвертации в число
+    def clean_numeric(series):
+        # replace('-', float('nan')) handles dashes common in these reports
+        return pd.to_numeric(series.astype(str).replace('-', float('nan')), errors='coerce')
+
+    # Конвертируем и считаем Максимум
+    project_data = grades_df[existing_project_columns].apply(clean_numeric)
+    grades_df['Оценка'] = project_data.max(axis=1)
+    
+    # Задаем фиксированное имя дисциплины
+    grades_df['Наименование дисциплины'] = "Внешнее измерение цифровых компетенций. Итоговый контроль"
+    
+    # Шаг 2: Подготовка к мерджу
+    id_cols = ['Адрес электронной почты']
+    if 'Адрес электронной почты' not in grades_df.columns:
+        st.error("Колонка 'Адрес электронной почты' не найдена в файле.")
+        return pd.DataFrame()
+
+    # Очистка email в grades_df
+    grades_df['Адрес электронной почты'] = grades_df['Адрес электронной почты'].astype(str).str.strip().str.lower()
+    
+    # Выбираем только валидные оценки ( > 0 и не NaN ) - как в скрипте process_grades.py
+    # valid_project = (grades_df['Оценка'] > 0) & (grades_df['Оценка'].notna())
+    # grades_df = grades_df[valid_project] 
+    # !!! ВАЖНО: В оригинальном скрипте фильтруются валидные, но здесь мы хотим обработать все, 
+    # чтобы показать результат. Фильтрацию пустых делаем позже, как в process_external_assessment.
+    
+    # Шаг 3: Присоединение данных студентов
+    students_cols = ['ФИО', 'Адрес электронной почты', 'Филиал (кампус)', 
+                     'Факультет', 'Образовательная программа', 'Группа', 'Курс']
+    
+    available_cols = [col for col in students_cols if col in students_df.columns]
+    students_subset = students_df[available_cols].copy()
+    students_subset['Адрес электронной почты'] = students_subset['Адрес электронной почты'].astype(str).str.strip().str.lower()
+    
+    result_df = grades_df.merge(
+        students_subset,
+        on='Адрес электронной почты',
+        how='left'
+    )
+    
+    # Шаг 4: Формирование финального датафрейма
+    result_df['ID дисциплины'] = ''
+    result_df['Период аттестации'] = ''
+    
+    if 'Филиал (кампус)' in result_df.columns:
+        result_df = result_df.rename(columns={'Филиал (кампус)': 'Кампус'})
+        
+    output_columns = [
+        'ФИО', 'Адрес электронной почты', 'Кампус', 'Факультет',
+        'Образовательная программа', 'Группа', 'Курс',
+        'Наименование дисциплины', 'Оценка', 'ID дисциплины', 'Период аттестации'
+    ]
+    
+    # Оставляем только нужные колонки, которые есть
+    final_columns = [col for col in output_columns if col in result_df.columns]
+    result_df = result_df[final_columns]
+    
+    # Очистка оценок (удаление Nan/0/пустых)
+    # В process_grades.py: (df['Оценка за проект'] > 0) & (df['Оценка за проект'].notna())
+    result_df = result_df[result_df['Оценка'].notna()]
+    result_df = result_df[result_df['Оценка'] > 0]
+    
+    # Логика приоритетов (Student IO, Peresdachi)
+    # Повторяем ту же логику, что в process_external_assessment
+    
+    result_df['Оценка'] = result_df['Оценка'].astype(str) # Приводим к строке для унификации
+    
+    # --- ШАГ 1: Проверка и обновление оценок из student_io ---
+    st.info("Проверка существующих оценок в student_io...")
+    student_io_df = load_student_io_from_supabase()
+    
+    if not student_io_df.empty:
+        result_df['Адрес электронной почты'] = result_df['Адрес электронной почты'].astype(str).str.strip().str.lower()
+        
+        merged_with_io = result_df.merge(
+            student_io_df[['Адрес электронной почты', 'Наименование дисциплины', 'Оценка']],
+            on=['Адрес электронной почты', 'Наименование дисциплины'],
+            how='left',
+            suffixes=('_from_file', '_from_io')
+        )
+        
+        merged_with_io['Оценка'] = merged_with_io['Оценка_from_io'].where(
+            pd.notna(merged_with_io['Оценка_from_io']), 
+            merged_with_io['Оценка_from_file']
+        )
+        
+        result_df = merged_with_io.drop(columns=['Оценка_from_file', 'Оценка_from_io'])
+        # Очистка после мерджа
+        result_df = result_df[result_df['Оценка'].notna()]
+        result_df = result_df[result_df['Оценка'].astype(str).str.strip() != '']
+        result_df = result_df[result_df['Оценка'].astype(str).str.strip().str.lower() != 'nan']
+        
+        st.success(f"Проверка student_io завершена.")
+    
+    # --- ШАГ 2: Проверка существующих оценок в peresdachi ---
+    st.info("Проверка существующих оценок в peresdachi...")
+    existing_peresdachi_df = load_existing_peresdachi()
+    
+    if not existing_peresdachi_df.empty:
+        if 'Адрес электронной почты' in existing_peresdachi_df.columns:
+            existing_peresdachi_df['Адрес электронной почты'] = existing_peresdachi_df['Адрес электронной почты'].astype(str).str.strip().str.lower()
+            
+        merged_with_peresdachi = result_df.merge(
+            existing_peresdachi_df[['Адрес электронной почты', 'Наименование дисциплины', 'Оценка']],
+            on=['Адрес электронной почты', 'Наименование дисциплины'],
+            how='left',
+            suffixes=('_current', '_peresdachi')
+        )
+        
+        merged_with_peresdachi['Оценка'] = merged_with_peresdachi['Оценка_peresdachi'].where(
+            pd.notna(merged_with_peresdachi['Оценка_peresdachi']),
+            merged_with_peresdachi['Оценка_current']
+        )
+        
+        result_df = merged_with_peresdachi.drop(columns=['Оценка_current', 'Оценка_peresdachi'])
+        # Очистка после мерджа
+        result_df = result_df[result_df['Оценка'].notna()]
+        result_df = result_df[result_df['Оценка'].astype(str).str.strip() != '']
+        result_df = result_df[result_df['Оценка'].astype(str).str.strip().str.lower() != 'nan']
+
+        st.success(f"Проверка peresdachi завершена.")
 
     return result_df

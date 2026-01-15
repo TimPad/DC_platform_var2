@@ -103,3 +103,33 @@ SYSTEM_MESSAGE = (
 LOTTIE_LOADING_URL = "https://assets5.lottiefiles.com/packages/lf20_V9t630.json"  # Coding/Processing
 LOTTIE_SUCCESS_URL = "https://assets9.lottiefiles.com/packages/lf20_jbrw3hcz.json"  # Checkmark
 LOTTIE_EMPTY_URL = "https://assets9.lottiefiles.com/packages/lf20_sif17h.json"     # Empty Box
+
+# =============================================================================
+# STUDENT DATA CONSTANTS
+# =============================================================================
+
+# Possible variations of column names in input files for student lists
+STUDENT_REQUIRED_COLUMNS = {
+    'ФИО': ['фио', 'фio', 'имя', 'name'],
+    'Корпоративная почта': ['адрес электронной почты', 'корпоративная почта', 'email', 'почта', 'e-mail'],
+    'Филиал (кампус)': ['филиал', 'кампус', 'campus'],
+    'Факультет': ['факультет', 'faculty'],
+    'Образовательная программа': ['образовательная программа', 'программа', 'educational program'],
+    'Версия образовательной программы': ['версия образовательной программы', 'версия программы', 'program version', 'version'],
+    'Группа': ['группа', 'group'],
+    'Курс': ['курс', 'course'],
+    'Уровень образования': ['уровень образования', 'уровень', 'level', 'образование']
+}
+
+# Mapping from Supabase column names to internal DataFrame column names
+STUDENT_DB_TO_DF_MAPPING = {
+    'корпоративная_почта': 'Адрес электронной почты',
+    'фио': 'ФИО',
+    'филиал_кампус': 'Филиал (кампус)',
+    'факультет': 'Факультет',
+    'образовательная_программа': 'Образовательная программа',
+    'версия_образовательной_программы': 'Версия образовательной программы',
+    'группа': 'Группа',
+    'курс': 'Курс',
+    'уровень_образования': 'Уровень образования'
+}
