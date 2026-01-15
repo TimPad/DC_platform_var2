@@ -275,7 +275,7 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
         )
 
     response = client.chat.completions.create(
-        model="Qwen/Qwen3-Coder-30B-A3B-Instruct",
+        model="deepseek-ai/DeepSeek-V3-0324-fast",
         messages=[
             {
                 "role": "system", 
@@ -324,16 +324,13 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
 
     return content.strip()
 
-# Проверка наличия API ключа
-try:
-    has_api_key = "NEBIUS_API_KEY" in st.secrets
-except FileNotFoundError:
-    has_api_key = False
+# Проверка наличия API ключа выполняется внутри get_nebius_client() при вызове
+# Но для UI можем проверить наличие в env или secrets, чтобы предупредить юзера заранее, 
+# хотя это не строго обязательно, так как get_nebius_client упадет с понятной ошибкой.
+# Оставим упрощенную проверку или уберем блокировку, полагаясь на try/except при генерации.
 
-if not has_api_key:
-    st.error("NEBIUS_API_KEY не настроен. Обратитесь к администратору.")
-    st.info("Создайте файл `.streamlit/secrets.toml` с вашим API ключом")
-    st.stop()
+# Убираем блокирующий код, так как ключ теперь может быть в os.environ
+pass
 
 col_settings_1, col_settings_2 = st.columns(2)
 

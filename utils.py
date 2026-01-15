@@ -4,6 +4,7 @@ DataCulture Platform - Shared Utilities
 """
 
 import streamlit as st
+import os
 from supabase import create_client, Client
 from openai import OpenAI
 import requests
@@ -240,11 +241,18 @@ def get_supabase_client() -> Client:
 @st.cache_resource
 def get_nebius_client():
     """Получить клиент Nebius API"""
-    if "NEBIUS_API_KEY" not in st.secrets:
-        raise ValueError("NEBIUS_API_KEY не найден в secrets.")
+    api_key = os.environ.get("NEBIUS_API_KEY")
+    if not api_key:
+        # Fallback to secrets for backward compatibility or local dev if needed,
+        # otherwise raise error.
+        if "NEBIUS_API_KEY" in st.secrets:
+             api_key = st.secrets["NEBIUS_API_KEY"]
+        else:
+            raise ValueError("NEBIUS_API_KEY не найден в переменных окружения (os.environ).")
+    
     return OpenAI(
-        base_url="https://api.tokenfactory.nebius.com/v1/",
-        api_key=st.secrets["NEBIUS_API_KEY"]
+        base_url="https://api.tokenfactory.us-central1.nebius.com/v1/",
+        api_key=api_key
     )
 
 # =============================================================================
