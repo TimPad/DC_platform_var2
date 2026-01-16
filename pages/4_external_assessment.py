@@ -44,7 +44,8 @@ from logic.external_assessment import (
     save_to_supabase,
     get_new_records_from_dataframe,
     process_external_assessment,
-    process_project_assessment
+    process_project_assessment,
+    update_final_grades
 )
 from logic.student_management import load_students_from_supabase
 
@@ -280,6 +281,16 @@ with tab_projects:
 
                                 save_success = save_to_supabase(display_new_records)
                                 st.session_state['projects_processed_state']['save_success'] = save_success
+                                
+                                # Обновляем final_grades для ВСЕХ обработанных записей (результат шага 1)
+                                # так как даже если запись не новая для peresdachi, оценка могла измениться
+                                if save_success:
+                                    st.info("Обновление сводной таблицы final_grades...")
+                                    fg_success, fg_updated, fg_skipped = update_final_grades(result_df)
+                                    if fg_success:
+                                        st.success(f"Таблица final_grades успешно обновлена. Обработано записей: {fg_updated}")
+                                    else:
+                                        st.warning("Не удалось обновить/синхронизировать final_grades.")
 
                         except Exception as e:
                             st.error(f"Ошибка: {str(e)}")

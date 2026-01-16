@@ -4,6 +4,7 @@ Logic for External Assessment Module
 import pandas as pd
 import streamlit as st
 from utils import get_supabase_client, fetch_all_from_supabase
+from typing import Tuple
 
 
 def load_existing_peresdachi() -> pd.DataFrame:
@@ -416,3 +417,154 @@ def process_project_assessment(grades_df: pd.DataFrame, students_df: pd.DataFram
         st.success(f"Проверка peresdachi завершена.")
 
     return result_df
+
+def update_final_grades(df: pd.DataFrame) -> Tuple[bool, int, int]:
+    """
+    Обновление таблицы final_grades в Supabase на основе новых оценок за проекты.
+    Стратегия: Fetch -> Merge -> Upsert
+    
+    1. Получаем текущую запись студента из final_grades
+    2. Обновляем 'Оценка за проект'
+    3. Пересчитываем 'Итоговая оценка' = max(Проект, Тест, Старый Итог)
+    4. Загружаем обратно
+    
+    Returns:
+        (success, processed_count, skipped_count)
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        if df.empty:
+            return True, 0, 0
+            
+        # Убираем дубликаты по email в текущем батче (берем последнюю/лучшую оценку)
+        # Предполагаем, что df уже прошел базовую очистку, но на всякий случай
+        if 'Адрес электронной почты' not in df.columns or 'Оценка' not in df.columns:
+            st.error("Нет необходимых колонок для обновления final_grades")
+            return False, 0, 0
+            
+        # Работаем с копией
+        work_df = df.copy()
+        work_df['Адрес электронной почты'] = work_df['Адрес электронной почты'].astype(str).str.strip().str.lower()
+        
+        # Получаем уникальные email из батча
+        unique_emails = work_df['Адрес электронной почты'].unique().tolist()
+        
+        if not unique_emails:
+            return True, 0, 0
+
+        # 1. FETCH: Получаем существующие записи из final_grades
+        # Supabase 'in_' фильтр
+        existing_records_map = {}
+        
+        # Разбиваем на чанки, если emails очень много (хотя обычно < 1000)
+        chunk_size = 200
+        for i in range(0, len(unique_emails), chunk_size):
+            chunk_emails = unique_emails[i:i + chunk_size]
+            try:
+                response = supabase.table('final_grades').select('*').in_('Адрес электронной почты', chunk_emails).execute()
+                for rec in response.data:
+                    email = rec.get('Адрес электронной почты', '').lower().strip()
+                    if email:
+                        existing_records_map[email] = rec
+            except Exception as e:
+                st.warning(f"Ошибка при получении данных из final_grades (chunk {i}): {e}")
+                # Продолжаем, считая что записей нет (будут созданы новые)
+
+        payloads = []
+        processed_count = 0
+        
+        for idx, row in work_df.iterrows():
+            email = row.get('Адрес электронной почты')
+            new_project_grade = row.get('Оценка')
+            fio = row.get('ФИО', '')
+            
+            if not email or pd.isna(new_project_grade):
+                continue
+                
+            try:
+                new_project_grade = float(new_project_grade)
+            except:
+                continue
+                
+            # Ищем существующую запись
+            record = existing_records_map.get(email, {})
+            
+            # Извлекаем старые значения
+            old_test_grade = record.get('Оценка за тест')
+            old_project_grade = record.get('Оценка за проект') # Может быть None
+            old_final_grade = record.get('Итоговая оценка')
+            
+            # Конвертация в float для сравнения
+            def to_float(val):
+                if val is None: return 0.0
+                try:
+                    return float(val)
+                except:
+                    return 0.0
+            
+            val_test = to_float(old_test_grade)
+            val_old_project = to_float(old_project_grade)
+            val_old_final = to_float(old_final_grade)
+            
+            # Логика обновления:
+            # Обновляем проектную оценку на НОВУЮ (перезаписываем, как просил пользователь "если изменилась")
+            current_project = new_project_grade 
+            
+            # Пересчет итоговой: Максимум из (Проект, Тест)
+            # Также учитываем val_old_final, если вдруг он был проставлен вручную выше? 
+            # Обычно формула: max(Test, Project). Но если старый итог больше (например, зачтено автоматом), берем его?
+            # В данном кейсе безопаснее пересчитать честно: max(Test, NewProject)
+            # ИЛИ если старый итог был уже 10, а мы шлем 8...
+            # Давайте возьмем max(val_test, current_project, val_old_final) чтобы не понизить случайно?
+            new_final = max(val_test, current_project, val_old_final)
+            
+            # Формируем payload
+            # Нам нужно сохранить ВСЕ поля, которые были, изменив только целевые
+            # НО upsert в supabase требует только PK и изменяемые поля, если мы хотим обновить.
+            # Однако, если записи НЕТ, нам нужно создать её.
+            
+            # Если запись БЫЛА: берем её ID или просто PK (Email) и обновляем поля
+            # Если записи НЕ БЫЛО: создаем новую, заполняя что можем
+            
+            payload = {}
+            if record:
+                # Копируем всё что есть, чтобы не потерять (хотя upsert по email обновит только поданные поля, если не делать замену?)
+                # Supabase upsert: "updates existing rows if the specified key matches".
+                # Значит можно подать только Email и изменяемые поля.
+                payload['Адрес электронной почты'] = email
+            else:
+                # Новая запись - заполним ФИО
+                payload['Адрес электронной почты'] = email
+                payload['ФИО'] = fio # В final_grades обычно Фамилия/Имя отдельно, но если такой колонки нет, то ой.
+                # Смотрим структуру final_grades из db_update.py: 'Фамилия', 'Имя'.
+                # Попробуем разделить ФИО
+                if fio and isinstance(fio, str):
+                    parts = fio.split()
+                    if len(parts) >= 1: payload['Фамилия'] = parts[0]
+                    if len(parts) >= 2: payload['Имя'] = parts[1]
+            
+            payload['Оценка за проект'] = current_project
+            payload['Итоговая оценка'] = new_final
+            # Оценка за тест не меняем, но если её не было - она останется null (для новых)
+            
+            # Добавим технические поля, если их нет
+            # 'Исходный файл' ?
+            
+            payloads.append(payload)
+            processed_count += 1
+
+        if not payloads:
+            return True, 0, 0
+            
+        # 3. UPSERT: Отправляем батчем
+        # Разбиваем на батчи
+        for i in range(0, len(payloads), chunk_size):
+            batch = payloads[i:i + chunk_size]
+            supabase.table('final_grades').upsert(batch, on_conflict='Адрес электронной почты').execute()
+            
+        return True, processed_count, 0
+            
+    except Exception as e:
+        st.error(f"Критическая ошибка при обновлении final_grades: {str(e)}")
+        return False, 0, 0
