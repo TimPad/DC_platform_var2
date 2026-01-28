@@ -86,6 +86,249 @@ HTML_EXAMPLE = f"""<div style="
   </div>
 </div>"""
 
+# Шаблон для анонса вебинаров НИУ ВШЭ
+WEBINAR_TEMPLATE = """<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Заголовок</title>
+  <style type="text/css">
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #f5f7fa;
+      color: #1a1a1a;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+    }
+    .header {
+      background: linear-gradient(135deg, #0033A0 0%, #0055D4 100%);
+      color: white;
+      text-align: center;
+      padding: 40px 20px 30px;
+      position: relative;
+      overflow: hidden;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: bold;
+    }
+    .header .subtitle {
+      font-size: 18px;
+      margin: 12px 0 0;
+      opacity: 0.95;
+    }
+    .circles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+    }
+    .circle {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+    }
+    .content {
+      padding: 30px 20px;
+    }
+    .events-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin: 30px 0;
+    }
+    .card {
+      flex: 1 1 48%;
+      background-color: #f0f5ff;
+      border-radius: 12px;
+      padding: 24px 20px;
+      box-sizing: border-box;
+      min-width: 260px;
+    }
+    .label-online {
+      display: inline-block;
+      background-color: #e6f0ff;
+      color: #0033A0;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 4px 10px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+    .date {
+      font-size: 15px;
+      color: #0033A0;
+      font-weight: bold;
+      margin: 8px 0 12px;
+    }
+    .title {
+      font-size: 20px;
+      margin: 0 0 12px;
+      line-height: 1.3;
+    }
+    .desc {
+      font-size: 15px;
+      color: #444;
+      line-height: 1.45;
+      margin: 0 0 16px;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #0033A0;
+      color: white;
+      font-weight: bold;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 15px;
+    }
+    .btn:hover {
+      background-color: #002080;
+    }
+    .past-webinars {
+      margin: 40px 0 20px;
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-radius: 12px;
+    }
+    .past-webinars h3 {
+      margin: 0 0 16px;
+      color: #0033A0;
+    }
+    .past-list {
+      margin: 0;
+      padding-left: 20px;
+      line-height: 1.6;
+    }
+    .past-list li {
+      margin-bottom: 10px;
+    }
+    .feedback {
+      text-align: center;
+      margin: 40px 0 20px;
+      font-size: 15px;
+      color: #444;
+    }
+    .stars {
+      font-size: 28px;
+      margin: 12px 0;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 13px;
+      color: #666;
+      border-top: 1px solid #eee;
+    }
+    @media (max-width: 600px) {
+      .card { flex: 1 1 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f7fa;">
+  <tr><td align="center">
+
+    <table class="container" cellpadding="0" cellspacing="0" border="0">
+      <!-- Шапка -->
+      <tr>
+        <td class="header">
+          <div class="circles">
+            <div class="circle" style="width:180px;height:180px;top:-60px;left:-60px;"></div>
+            <div class="circle" style="width:120px;height:120px;bottom:-40px;right:-40px;"></div>
+            <div class="circle" style="width:80px;height:80px;top:40px;right:20px;"></div>
+          </div>
+          <h1>Вебинары НИУ ВШЭ</h1>
+          <div class="subtitle">Ближайшие онлайн-мероприятия</div>
+        </td>
+      </tr>
+
+      <!-- Контент -->
+      <tr>
+        <td class="content">
+
+          <div style="text-align:center; margin-bottom:30px;">
+            <a href="#" style="color:#0033A0; font-weight:bold; text-decoration:none;">Все мероприятия →</a>
+          </div>
+
+          <div class="events-grid">
+
+            <!-- Карточка 1 -->
+            <div class="card">
+              <div class="label-online">Онлайн</div>
+              <div class="date">5 февраля 12:00 (МСК)</div>
+              <h3 class="title">Название вебинара</h3>
+              <p class="desc">Краткое описание вебинара и его тематики.</p>
+              <a href="#" class="btn">Зарегистрироваться →</a>
+            </div>
+
+            <!-- Карточка 2 -->
+            <div class="card">
+              <div class="label-online">Онлайн</div>
+              <div class="date">12 февраля 12:00 (МСК)</div>
+              <h3 class="title">Название вебинара</h3>
+              <p class="desc">Краткое описание вебинара и его тематики.</p>
+              <a href="#" class="btn">Зарегистрироваться →</a>
+            </div>
+
+          </div>
+
+          <!-- Прошедшие вебинары -->
+          <div class="past-webinars">
+            <h3>Записи прошедших вебинаров для вас</h3>
+            <ul class="past-list">
+              <li>Название прошедшего вебинара 1</li>
+              <li>Название прошедшего вебинара 2</li>
+            </ul>
+          </div>
+
+        </td>
+      </tr>
+
+      <!-- Футер -->
+      <tr>
+        <td class="footer">
+          © Национальный исследовательский университет «Высшая школа экономики»<br>
+        </td>
+      </tr>
+    </table>
+
+  </td></tr>
+</table>
+
+</body>
+</html>"""
+
+# Словарь шаблонов с метаданными для UI выбора
+TEMPLATES = {
+    "data_culture": {
+        "name": "Горизонтальная сетка",
+        "description": "Классическая вертикальная верстка с широкими информационными блоками и акцентным хедером. Подходит для длинных объявлений.",
+        "icon": "",
+        "html": HTML_EXAMPLE,
+        "color": "#001A57",
+        "preview_bg": "linear-gradient(135deg, #001a57 0%, #00256c 100%)"
+    },
+    "webinars": {
+        "name": "Смешанная сетка",
+        "description": "Компактная сетка из нескольких карточек в ряд. Идеально подходит для каталогов, анонсов мероприятий и списков событий.",
+        "icon": "",
+        "html": WEBINAR_TEMPLATE,
+        "color": "#0033A0",
+        "preview_bg": "linear-gradient(135deg, #0033A0 0%, #0055D4 100%)"
+    }
+}
+
 SYSTEM_MESSAGE = (
     "Вы — эксперт по оформлению официальных рассылок НИУ ВШЭ. "
     "Ваша задача — преобразовать входной текст объявления в HTML-карточку, строго следуя фирменному стилю. "

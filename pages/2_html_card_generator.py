@@ -8,7 +8,7 @@ import json
 import html
 import streamlit.components.v1 as components
 from utils import icon, apply_custom_css, get_nebius_client
-from constants import LOGO_URL, LOGO_URL_BLACK, LOGO_URL_PNG, HTML_EXAMPLE, SYSTEM_MESSAGE
+from constants import LOGO_URL, LOGO_URL_BLACK, LOGO_URL_PNG, HTML_EXAMPLE, SYSTEM_MESSAGE, TEMPLATES, WEBINAR_TEMPLATE
 
 # Применяем кастомные стили
 apply_custom_css()
@@ -28,35 +28,7 @@ st.markdown("""
 3. Получите готовый HTML-код и предпросмотр
 """)
 
-def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str) -> str:
-    """
-    Генерация HTML-карточки через Nebius API
-    
-    Args:
-        client: OpenAI клиент
-        user_text: Текст объявления
-        style_mode: "HTML с CSS" или "Чистый HTML"
-        accent_color: HEX код основного цвета
-        
-    Returns:
-        HTML-код карточки
-    """
-    
-def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str) -> str:
-    """
-    Генерация HTML-карточки через Nebius API
-    
-    Args:
-        client: OpenAI клиент
-        user_text: Текст объявления
-        style_mode: "HTML с CSS" или "Чистый HTML"
-        accent_color: HEX код основного цвета
-        
-    Returns:
-        HTML-код карточки
-    """
-    
-def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str, allow_text_edits: bool, width_css: str, tone: str) -> str:
+def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str, allow_text_edits: bool, width_css: str, tone: str, template_key: str = "data_culture") -> str:
     """
     Генерация HTML-карточки через Nebius API
     
@@ -68,13 +40,15 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
         allow_text_edits: Разрешить ли ИИ менять текст пользователя
         width_css: CSS значение ширины (напр. "800px" или "100%")
         tone: Тональность текста
+        template_key: Ключ шаблона из TEMPLATES
         
     Returns:
         HTML-код карточки
     """
     
-    # Базовый пример
-    current_html_example = HTML_EXAMPLE
+    # Получаем шаблон из словаря TEMPLATES
+    template_data = TEMPLATES.get(template_key, TEMPLATES["data_culture"])
+    current_html_example = template_data["html"]
 
     # Определяем цвет текста для хедера (белый или черный)
     is_light_color = False
@@ -273,6 +247,26 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
             "Пример корректного вывода:\n"
             + str({"type": "HTML", "content": current_html_example})
         )
+    
+    # Специальная логика для шаблона вебинаров
+    if template_key == "webinars":
+        webinar_system_msg = (
+            "Вы — эксперт по оформлению email-рассылок для анонсов вебинаров НИУ ВШЭ. "
+            "Ваша задача — преобразовать входной текст с информацией о вебинарах в HTML-рассылку. "
+            "ИСПОЛЬЗУЙТЕ ТОЧНУЮ СТРУКТУРУ из приведённого ниже шаблона!\n\n"
+            "ТРЕБОВАНИЯ:\n"
+            "1. СОХРАНЯЙТЕ структуру шаблона: header → content → events-grid → past-webinars → feedback → footer.\n"
+            "2. Каждый вебинар оформляйте как отдельную карточку (.card) внутри .events-grid.\n"
+            "3. В каждой карточке должны быть: метка 'Онлайн', дата/время, название, описание, кнопка регистрации.\n"
+            "4. Если в тексте указаны прошедшие вебинары или записи — добавьте их в секцию .past-webinars.\n"
+            "5. Заголовок и подзаголовок в header адаптируйте под контент пользователя.\n"
+            "6. НЕ добавляйте лишних комментариев — только HTML-код.\n"
+            f"{text_instruction}\n"
+            "Верните ТОЛЬКО корректный JSON в формате: {\"type\": \"HTML\", \"content\": \"<!DOCTYPE html>...\"}.\n\n"
+            "ШАБЛОН:\n"
+            + str({"type": "HTML", "content": current_html_example})
+        )
+        system_msg = webinar_system_msg
 
     response = client.chat.completions.create(
         model="deepseek-ai/DeepSeek-V3-0324-fast",
@@ -332,6 +326,106 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
 # Убираем блокирующий код, так как ключ теперь может быть в os.environ
 pass
 
+# =============================================================================
+# ВЫБОР ШАБЛОНА
+# =============================================================================
+
+st.markdown("### 🎨 Выберите макет")
+
+# Инициализация выбранного шаблона в session_state
+if 'selected_template' not in st.session_state:
+    st.session_state['selected_template'] = 'data_culture'
+
+@st.dialog("Предпросмотр макета", width="large")
+def show_template_preview(template_key):
+    template_data = TEMPLATES[template_key]
+    st.markdown(f"### {template_data['name']}")
+    st.info(template_data['description'])
+    
+    # Экранируем HTML и оборачиваем в iframe
+    safe_html = html.escape(template_data["html"], quote=True)
+    components.html(
+        f"""
+        <div style="
+            width: 100%;
+            height: 600px;
+            overflow: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            background: white;
+            padding: 0;
+            box-sizing: border-box;
+        ">
+            <iframe 
+                srcdoc="{safe_html}" 
+                style="width: 100%; height: 100%; border: none; display: block;"
+                sandbox="allow-same-origin"
+            ></iframe>
+        </div>
+        """,
+        height=620
+    )
+    if st.button("Использовать этот макет", type="primary", use_container_width=True):
+        st.session_state['selected_template'] = template_key
+        st.rerun()
+
+# Стили для выравнивания высоты карточек
+st.markdown("""
+<style>
+    .template-card-header {
+        height: 70px;
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .template-card-desc {
+        height: 80px;
+        font-size: 0.9rem;
+        color: #6b7280;
+        overflow: hidden;
+        margin-bottom: 20px;
+        line-height: 1.5;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Отрисовка компактных карточек выбора
+template_cols = st.columns(len(TEMPLATES))
+
+for idx, (template_key, template_data) in enumerate(TEMPLATES.items()):
+    with template_cols[idx]:
+        is_selected = st.session_state['selected_template'] == template_key
+        
+        # Создаем визуальную карточку через st.container с border
+        with st.container(border=True):
+            # Заголовок с фиксированный высотой для выравнивания
+            st.markdown(f"<div class='template-card-header'><h4>{template_data['name']}</h4></div>", unsafe_allow_html=True)
+            
+            # Описание с фиксированный высотой
+            st.markdown(f"<div class='template-card-desc'>{template_data['description']}</div>", unsafe_allow_html=True)
+            
+            col_btn_1, col_btn_2 = st.columns([2, 1])
+            with col_btn_1:
+                if st.button(
+                    "Выбрать" if not is_selected else "Выбрано", 
+                    key=f"sel_{template_key}",
+                    type="primary" if is_selected else "secondary",
+                    use_container_width=True,
+                    disabled=is_selected
+                ):
+                    st.session_state['selected_template'] = template_key
+                    st.rerun()
+            with col_btn_2:
+                # Кнопка без эмоджи, используем текст или иконку из utils если нужно
+                if st.button("Превью", key=f"prev_{template_key}", help="Предпросмотр макета", use_container_width=True):
+                    show_template_preview(template_key)
+
+st.divider()
+
+# =============================================================================
+# НАСТРОЙКИ ГЕНЕРАЦИИ
+# =============================================================================
+
 col_settings_1, col_settings_2 = st.columns(2)
 
 with col_settings_1:
@@ -384,7 +478,7 @@ if st.button("Сформировать HTML", type="primary"):
         with st.spinner("Генерация карточки..."):
             try:
                 client = get_nebius_client()
-                html_code = generate_hse_html(client, user_text, style_mode, accent_color, allow_text_edits, width_css, tone_option)
+                html_code = generate_hse_html(client, user_text, style_mode, accent_color, allow_text_edits, width_css, tone_option, st.session_state['selected_template'])
                 # Сохраняем в session_state чтобы не потерять при обновлении
                 st.session_state['generated_html'] = html_code
                 st.success("Карточка успешно создана!")
