@@ -106,7 +106,9 @@ with tab_tests:
             if st.button("Обработать данные (Тесты)", type="primary", key="process_btn_tests"):
                 with st.spinner("Обработка пересдач..."):
                     try:
-                        result_df = process_external_assessment(grades_df, students_df)
+                        result_df, logs = process_external_assessment(grades_df, students_df)
+                        for log_msg in logs:
+                            st.info(log_msg)
 
                         if result_df.empty:
                             st.error("Не удалось обработать данные. Проверьте структуру файла.")
@@ -144,13 +146,14 @@ with tab_tests:
                                 'total_count': total_count,
                                 'new_count': new_count,
                                 'duplicates_removed': duplicates_removed_result,
-                                'save_success': False, # Будет обновлено при сохранении
-                                'processed_at': datetime.now()
+                                'processed_at': datetime.now(),
+                                'save_msg': ''
                             }
 
                             # Автоматическое сохранение при обработке
-                            save_success = save_to_supabase(display_new_records)
+                            save_success, save_msg = save_to_supabase(display_new_records)
                             st.session_state['tests_processed_state']['save_success'] = save_success
+                            st.session_state['tests_processed_state']['save_msg'] = save_msg
                             
                     except Exception as e:
                         st.error(f"Ошибка: {str(e)}")
@@ -166,12 +169,12 @@ with tab_tests:
                      st.warning(f"Удалено {state['duplicates_removed']} дубликатов.")
 
                 if state['save_success']:
-                    st.success(f"Сохранено новых записей: {state['new_count']}.") # из {state['total_count']}
+                    st.success(f"{state.get('save_msg', 'Сохранено новых записей')}: {state['new_count']}.") 
                     lottie_success = load_lottie_url(LOTTIE_SUCCESS_URL)
                     if lottie_success:
                         st_lottie(lottie_success, height=150, key="success_anim_tests", loop=False) # LOOP FALSE
                 else:
-                    st.error("Ошибка при сохранении данных в Supabase")
+                    st.error(f"Ошибка при сохранении данных в Supabase: {state.get('save_msg', '')}")
 
                 # Статистика
                 st.subheader("Результаты")
@@ -241,7 +244,9 @@ with tab_projects:
                 if st.button("Обработать данные (Проекты)", type="primary", key="process_btn_projects"):
                      with st.spinner("Обработка проектов..."):
                         try:
-                            result_df = process_project_assessment(project_grades_df, students_df)
+                            result_df, logs = process_project_assessment(project_grades_df, students_df)
+                            for log_msg in logs:
+                                st.info(log_msg)
                             
                             if result_df.empty:
                                 st.error("Результат пуст. Проверьте соответствие колонок (email, задания).")
@@ -275,22 +280,23 @@ with tab_projects:
                                     'total_count': total_count,
                                     'new_count': new_count,
                                     'duplicates_removed': duplicates_removed,
-                                    'save_success': False,
-                                    'processed_at': datetime.now()
+                                    'processed_at': datetime.now(),
+                                    'save_msg': ''
                                 }
 
-                                save_success = save_to_supabase(display_new_records)
+                                save_success, save_msg = save_to_supabase(display_new_records)
                                 st.session_state['projects_processed_state']['save_success'] = save_success
+                                st.session_state['projects_processed_state']['save_msg'] = save_msg
                                 
                                 # Обновляем final_grades для ВСЕХ обработанных записей (результат шага 1)
                                 # так как даже если запись не новая для peresdachi, оценка могла измениться
                                 if save_success:
                                     st.info("Обновление сводной таблицы final_grades...")
-                                    fg_success, fg_updated, fg_skipped = update_final_grades(result_df)
+                                    fg_success, fg_updated, fg_msg = update_final_grades(result_df)
                                     if fg_success:
                                         st.success(f"Таблица final_grades успешно обновлена. Обработано записей: {fg_updated}")
                                     else:
-                                        st.warning("Не удалось обновить/синхронизировать final_grades.")
+                                        st.warning(f"Не удалось обновить/синхронизировать final_grades: {fg_msg}")
 
                         except Exception as e:
                             st.error(f"Ошибка: {str(e)}")
@@ -306,12 +312,12 @@ with tab_projects:
                          st.warning(f"Удалено {state['duplicates_removed']} дубликатов.")
 
                     if state['save_success']:
-                        st.success(f"Сохранено новых записей: {state['new_count']}")
+                        st.success(f"{state.get('save_msg', 'Сохранено новых записей')}: {state['new_count']}")
                         lottie_success = load_lottie_url(LOTTIE_SUCCESS_URL)
                         if lottie_success:
                             st_lottie(lottie_success, height=150, key="success_anim_projects", loop=False) # LOOP FALSE
                     else:
-                        st.error("Ошибка сохранения")
+                        st.error(f"Ошибка сохранения: {state.get('save_msg', '')}")
 
                     # Статистика и скачивание
                     st.subheader("Результаты")

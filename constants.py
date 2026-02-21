@@ -376,3 +376,54 @@ STUDENT_DB_TO_DF_MAPPING = {
     'курс': 'Курс',
     'уровень_образования': 'Уровень образования'
 }
+
+# =============================================================================
+# EXTERNAL ASSESSMENT & DATABASE CONSTANTS
+# =============================================================================
+
+# Database Tables
+DB_TABLE_STUDENT_IO = 'student_io'
+DB_TABLE_PERESDACHI = 'peresdachi'
+DB_TABLE_FINAL_GRADES = 'final_grades'
+DB_TABLE_STUDENTS = 'students'
+
+# Common Column Names
+COL_EMAIL = 'Адрес электронной почты'
+COL_DISCIPLINE = 'Наименование дисциплины'
+COL_GRADE = 'Оценка'
+COL_CAMPUS = 'Кампус'
+COL_CAMPUS_OLD = 'Филиал (кампус)'
+COL_FIO = 'ФИО'
+COL_FACULTY = 'Факультет'
+COL_PROGRAM = 'Образовательная программа'
+COL_PROGRAM_VERSION = 'Версия образовательной программы'
+COL_GROUP = 'Группа'
+COL_COURSE = 'Курс'
+COL_EDU_LEVEL = 'Уровень образования'
+COL_ID_DISCIPLINE = 'ID дисциплины'
+COL_PERIOD = 'Период аттестации'
+
+# Discipline Names
+DISCIPLINE_INPUT = 'Внешнее измерение цифровых компетенций. Входной контроль'
+DISCIPLINE_MID = 'Внешнее измерение цифровых компетенций. Промежуточный контроль'
+DISCIPLINE_FINAL = 'Внешнее измерение цифровых компетенций. Итоговый контроль'
+
+# Test Column Names
+TEST_COL_INPUT = 'Тест:Входное тестирование (Значение)'
+TEST_COL_MID = 'Тест:Промежуточное тестирование (Значение)'
+TEST_COL_FINAL = 'Тест:Итоговое тестирование (Значение)'
+
+# Project Column Names
+PROJECT_COL_HUMANITIES = "Задание:Гуманитарные науки (Значение)"
+PROJECT_COL_SOCIO_ECON = "Задание:Социально-экономические науки (Значение)"
+PROJECT_COL_NATURAL = "Задание:Естественные науки (Значение)"
+PROJECT_COL_GENERAL = "Задание:Общее: интерактивная история (Значение)"
+PROJECT_COL_EXTENDED = "Задание:Интерактивная история: Расширенная версия (Значение)"
+
+PROJECT_COLUMNS = [
+    PROJECT_COL_HUMANITIES,
+    PROJECT_COL_SOCIO_ECON, 
+    PROJECT_COL_NATURAL,
+    PROJECT_COL_GENERAL,
+    PROJECT_COL_EXTENDED
+]

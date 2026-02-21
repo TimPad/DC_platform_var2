@@ -3,7 +3,7 @@ Logic for Student Management
 Handling student list loading, parsing, and updating in Supabase.
 """
 import pandas as pd
-import streamlit as st
+from typing import Tuple
 import time
 from io import StringIO
 from utils import get_supabase_client, fetch_all_from_supabase
@@ -31,8 +31,7 @@ def load_student_list_file(uploaded_file) -> pd.DataFrame:
                     # Попытка 3: CP1251 (Windows)
                     df = pd.read_csv(StringIO(content.decode('cp1251')))
         else:
-            st.error("Неподдерживаемый формат файла")
-            return pd.DataFrame()
+            raise ValueError("Неподдерживаемый формат файла")
 
         # Поиск колонок по вариациям названий (из constants.py)
         found_columns = {}
@@ -76,15 +75,13 @@ def load_student_list_file(uploaded_file) -> pd.DataFrame:
         return result_df
         
     except Exception as e:
-        st.error(f"Ошибка загрузки списка студентов: {e}")
-        return pd.DataFrame()
+        raise ValueError(f"Ошибка загрузки списка студентов: {e}")
 
 def upload_students_to_supabase(supabase, student_data: pd.DataFrame) -> bool:
     """
     Загрузка данных студентов в таблицу students с использованием оптимизированного UPSERT.
     """
     try:
-        st.info("👥 Загрузка данных студентов (UPSERT)...")
         records_for_upsert = []
         processed_emails = set()
         
@@ -115,10 +112,7 @@ def upload_students_to_supabase(supabase, student_data: pd.DataFrame) -> bool:
             records_for_upsert.append(student_record)
         
         if not records_for_upsert:
-            st.info("Нет записей для обработки")
-            return True
-        
-        st.info(f"Подготовлено {len(records_for_upsert)} записей для UPSERT")
+            return False, "Нет записей для обработки"
         
         # Batch processing
         batch_size = 200
@@ -137,30 +131,22 @@ def upload_students_to_supabase(supabase, student_data: pd.DataFrame) -> bool:
                     returning='minimal'
                 ).execute()
                 total_processed += len(batch)
-                st.success(f"Батч {batch_num}/{total_batches}: обработано {len(batch)} записей")
             except Exception as e:
                 error_str = str(e)
                 if any(pat in error_str.lower() for pat in ["connection", "timeout", "ssl", "eof"]):
-                    st.warning(f"Сетевая ошибка в батче {batch_num}, повтор...")
                     time.sleep(2)
                     try:
                         result = supabase.table('students').upsert(batch, on_conflict='корпоративная_почта').execute()
                         total_processed += len(batch)
-                        st.success(f"Батч {batch_num} (после повтора)")
                     except Exception as retry_error:
-                        st.error(f"Батч {batch_num} не удался после повтора: {retry_error}")
-                        return False
+                        return False, f"Батч {batch_num} не удался после повтора: {retry_error}"
                 else:
-                    st.error(f"Ошибка в батче {batch_num}: {e}")
-                    return False
+                    return False, f"Ошибка в батче {batch_num}: {e}"
         
-        st.success(f"UPSERT завершён! Обработано {total_processed} записей")
-        return True
+        return True, f"UPSERT завершён! Обработано {total_processed} записей"
     except Exception as e:
-        st.error(f"Критическая ошибка UPSERT студентов: {e}")
-        return False
+        return False, f"Критическая ошибка UPSERT студентов: {e}"
 
-@st.cache_data(ttl=300)
 def load_students_from_supabase(filters: dict = None) -> pd.DataFrame:
     """
     Загрузка списка студентов из Supabase с кэшированием (TTL 300с).
@@ -182,5 +168,4 @@ def load_students_from_supabase(filters: dict = None) -> pd.DataFrame:
             return pd.DataFrame()
             
     except Exception as e:
-        st.warning(f"Не удалось загрузить данные студентов: {str(e)}")
-        return pd.DataFrame()
+        raise ValueError(f"Не удалось загрузить данные студентов: {str(e)}")

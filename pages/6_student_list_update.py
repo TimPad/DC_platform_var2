@@ -95,7 +95,11 @@ students_file = st.file_uploader(
 if students_file:
     try:
         with st.spinner("Загрузка файла..."):
-            students_df = load_student_list_file(students_file)
+            try:
+                students_df = load_student_list_file(students_file)
+            except ValueError as ve:
+                st.error(str(ve))
+                st.stop()
         
         if students_df.empty:
             st.error("Не удалось загрузить данные из файла. Проверьте формат файла.")
@@ -120,15 +124,15 @@ if students_file:
         if st.button("Обновить список студентов в Supabase", type="primary", key="update_students_btn"):
             with st.spinner("Обновление базы данных..."):
                 try:
-                    if upload_students_to_supabase(supabase, students_df):
-                        st.success("Список студентов обновлён!")
+                    success, msg = upload_students_to_supabase(supabase, students_df)
+                    if success:
+                        st.success(msg)
                         st.balloons()
                     else:
-                        st.error("Не удалось обновить список студентов")
+                        st.error(msg)
                     
                 except Exception as e:
                     st.error(f"Ошибка при обновлении: {str(e)}")
-                    st.exception(e)
     
     except Exception as e:
         st.error(f"Ошибка при загрузке файла: {str(e)}")
