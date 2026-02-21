@@ -4,7 +4,7 @@ Logic for External Assessment Module
 import pandas as pd
 from typing import Tuple, List
 from utils import get_supabase_client, fetch_all_from_supabase
-from logic.data_utils import clean_email_column, clean_string_column, filter_valid_grades, drop_dataframe_duplicates
+from logic.data_utils import clean_email_column, clean_string_column, filter_valid_grades
 import constants
 
 def load_existing_peresdachi() -> pd.DataFrame:
