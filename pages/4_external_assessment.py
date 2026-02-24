@@ -287,9 +287,11 @@ with tab_tests:
 
             st.success("Файл с оценками успешно загружен!")
 
-            # Загрузка студентов
-            with st.spinner("Загрузка списка студентов из Supabase..."):
-                students_df = load_students_from_supabase(filters={'курс': ['Курс 2', 'Курс 3', 'Курс 4']})
+            # Загрузка студентов (с кэшированием в session_state)
+            if 'students_df_tests' not in st.session_state:
+                with st.spinner("Загрузка списка студентов из Supabase..."):
+                    st.session_state['students_df_tests'] = load_students_from_supabase(filters={'курс': ['Курс 2', 'Курс 3', 'Курс 4']})
+            students_df = st.session_state['students_df_tests']
 
             if students_df.empty:
                 st.error("Список студентов пуст. Загрузите данные в таблицу `students` в Supabase.")
@@ -439,8 +441,11 @@ with tab_projects:
             
             st.success("Файл успешно загружен!")
             
-            with st.spinner("Загрузка студентов..."):
-                students_df = load_students_from_supabase(filters={'курс': ['Курс 2', 'Курс 3', 'Курс 4']})
+            # Загрузка студентов (с кэшированием в session_state)
+            if 'students_df_projects' not in st.session_state:
+                with st.spinner("Загрузка студентов из Supabase..."):
+                    st.session_state['students_df_projects'] = load_students_from_supabase(filters={'курс': ['Курс 2', 'Курс 3', 'Курс 4']})
+            students_df = st.session_state['students_df_projects']
             
             if students_df.empty:
                 st.error("Список студентов пуст.")
