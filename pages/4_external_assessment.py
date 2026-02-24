@@ -22,67 +22,229 @@ st.markdown(
 )
 
 st.markdown("""
-📊 **1. Отображение результатов**
+<style>
+.instr-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+.instr-card {
+    background: var(--apple-bg-secondary, #2a2a30);
+    border: 1px solid var(--apple-divider, rgba(255,255,255,0.08));
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.instr-card-title {
+    color: var(--apple-text-primary, #e0e0e6);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--apple-divider, rgba(255,255,255,0.08));
+    padding-bottom: 0.8rem;
+}
+.instr-card-title svg {
+    color: var(--apple-accent, #5A9DF8);
+}
+.instr-section {
+    margin-bottom: 1.2rem;
+}
+.instr-section:last-child {
+    margin-bottom: 0;
+}
+.instr-label {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--apple-accent, #5A9DF8);
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+}
+.instr-text {
+    font-size: 0.95rem;
+    color: var(--apple-text-secondary, #a1a1aa);
+    line-height: 1.5;
+}
+.instr-text strong {
+    color: var(--apple-text-primary, #e0e0e6);
+}
+.instr-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--apple-text-primary, #e0e0e6);
+    text-decoration: none !important;
+    background: rgba(255,255,255,0.05);
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    transition: background 0.2s;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+.instr-link:hover {
+    background: rgba(255,255,255,0.1);
+}
+.instr-alert {
+    background: rgba(250, 204, 21, 0.1);
+    border-left: 3px solid #facc15;
+    padding: 0.8rem 1rem;
+    border-radius: 0 8px 8px 0;
+    margin-top: 0.8rem;
+    font-size: 0.9rem;
+    color: var(--apple-text-primary, #e0e0e6);
+}
+.instr-alert strong {
+    color: #fde047;
+}
+.instr-step {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+.instr-step:last-child {
+    margin-bottom: 0;
+}
+.instr-step-num {
+    background: rgba(90, 157, 248, 0.15);
+    color: var(--apple-accent, #5A9DF8);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+.instr-step-content {
+    flex: 1;
+}
+.instr-step-title {
+    color: var(--apple-text-primary, #e0e0e6);
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+    font-size: 0.95rem;
+}
+kode {
+    background: rgba(255,255,255,0.1);
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.85em;
+    color: #e0e0e6;
+}
+</style>
+""", unsafe_allow_html=True)
 
-Все обновлённые оценки автоматически отражаются на дэшборде:
-🔗 [Yandex DataLens — Внешнее измерение](https://datalens.yandex/n77d62nm8lus8)
+col_info_1, col_info_2 = st.columns([1, 1])
 
-**2. Процесс сдачи для студентов**
+with col_info_1:
+    st.markdown("""
+    <div class="instr-card">
+        <div class="instr-card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            1. Данные и результаты
+        </div>
+        <div class="instr-text">
+            Все обновлённые оценки автоматически отражаются на дэшборде:
+            <br/>
+            <a href="https://datalens.yandex/n77d62nm8lus8" target="_blank" class="instr-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                Yandex DataLens — Внешнее измерение
+            </a>
+        </div>
+    </div>
+    <div class="instr-card" style="margin-top: 1rem;">
+        <div class="instr-card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            2. Инфо по студентам
+        </div>
+        <div class="instr-section">
+            <div class="instr-label">🎓 4 курс</div>
+            <div class="instr-text">
+                Внешнее измерение состоит из 3 этапов.<br/>
+                <a href="https://edu.hse.ru/course/view.php?id=253000" target="_blank" class="instr-link">Сдача через курс id=253000</a>
+            </div>
+        </div>
+        <div class="instr-section">
+            <div class="instr-label">🎓 3 курс</div>
+            <div class="instr-text">
+                Оценка формируется через итоговый проект.<br/>
+                <a href="https://edu.hse.ru/course/view.php?id=273033" target="_blank" class="instr-link">Сдача через курс id=273033</a>
+                <div class="instr-alert">
+                    <strong>⚠️ Нет оценки?</strong> Возможна техническая ошибка. Попросите студента пересохранить проект.
+                </div>
+            </div>
+        </div>
+        <div class="instr-section">
+            <div class="instr-label">🚀 Продвинутый уровень</div>
+            <div class="instr-text">
+                Дополнительная загрузка <strong>не требуется</strong>.<br/>Идёт перезачёт оценки курсовой 2 курса из архива.
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-**Студенты 4 курса
-Внешнее измерение состоит из трёх этапов.
-Сдача происходит через курс:
-🔗 [edu.hse.ru/course/view.php?id=253000](https://edu.hse.ru/course/view.php?id=253000)
+with col_info_2:
+    st.markdown("""
+    <div class="instr-card" style="height: 100%;">
+        <div class="instr-card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            3. Обработка оценок сотрудником
+        </div>
+        
+        <div class="instr-step">
+            <div class="instr-step-num">1</div>
+            <div class="instr-step-content instr-text">
+                <div class="instr-step-title">Экспорт из SmartLMS</div>
+                Зайдите в курс (4к: <kode>253000</kode>, 3к: <kode>273033</kode>).<br/>
+                <strong>Оценки → Экспорт</strong>: 📄 CSV или 📊 Excel.
+            </div>
+        </div>
 
-**Студенты 3 курса
-Сдача проходит через итоговый проект.
-Курс для загрузки:
-🔗 [edu.hse.ru/course/view.php?id=273033](https://edu.hse.ru/course/view.php?id=273033)
+        <div class="instr-step">
+            <div class="instr-step-num">2</div>
+            <div class="instr-step-content instr-text">
+                <div class="instr-step-title">Загрузка файлов</div>
+                🧪 <strong>Тест</strong> (4 курс) или 📁 <strong>Проект</strong> (3 курс).<br/>
+                Загрузите файл ниже и нажмите обработать.
+            </div>
+        </div>
 
-⚠️ **Если студент 3 курса утверждает, что сдал проект, но оценки нет:**
-Скорее всего, возникла техническая ошибка при обработке.
-**Решение:** попросите студента перезагрузить проект через тот же курс.
+        <div class="instr-step">
+            <div class="instr-step-num">3</div>
+            <div class="instr-step-content instr-text">
+                <div class="instr-step-title">Выгрузка</div>
+                🆕 <strong>Только новые</strong> — для инкрементального обновления.<br/>
+                📋 <strong>Полная ведомость</strong> — для сверки.
+            </div>
+        </div>
 
-🚀 Студенты продвинутого уровня
-Вместо проекта используется перезачёт оценки за курсовую работу со 2 курса.
-Дополнительная загрузка не требуется — оценка импортируется из архива.
+        <div class="instr-step">
+            <div class="instr-step-num">4</div>
+            <div class="instr-step-content instr-text">
+                <div class="instr-step-title">Дополнение из SmartReg</div>
+                Добавьте ID дисциплины и Период (напр., <kode>2024/2025 2 модуль</kode>).
+            </div>
+        </div>
 
-**3. Обработка оценок сотрудником**
-
-**Шаг 1: Экспорт данных из SmartLMS**
-Перейдите в соответствующий курс сдачи:
-- 4 курс: `id=253000`
-- 3 курс: `id=273033`
-Откройте раздел **Оценки → Экспорт**.
-Выберите формат:
-**Текстовый документ (CSV)** или
-**Excel (.xlsx)**
-Скачайте файл на устройство.
-
-**Шаг 2: Загрузка в систему обработки**
-Перейдите в меню обработки оценок.
-Выберите тип данных:
-**Тест** — для этапов 4 курса
-**Проект** — для итогового проекта 3 курса
-Загрузите экспортированный файл.
-Запустите обработку.
-
-**Шаг 3: Выгрузка результатов**
-После успешной обработки доступны два варианта выгрузки:
-**Только новые записи** — для инкрементального обновления
-**Полная ведомость** — для сверки и архивации
-
-**Шаг 4: Дополнение данными из SmartReg**
-Откройте файл с результатами обработки.
-Для каждой записи добавьте:
-- ID дисциплины (из системы SmartReg)
-- Период реализации (например, 2024/2025 2 модуль)
-
-**Шаг 5: Передача на финальную загрузку**
-📬 Отправьте подготовленный файл ответственному:
-**Голубев Александр**
-💡 *Рекомендуется указывать в тексте письма: загрузка первичной попытки*
-""")
+        <div class="instr-step">
+            <div class="instr-step-num">5</div>
+            <div class="instr-step-content instr-text">
+                <div class="instr-step-title">Финальная загрузка</div>
+                Отправьте файл Голубеву Александру.<br/>
+                <span style="color:var(--apple-accent)">💡 Рекомендация:</span> в письме указать <em>«загрузка первичной попытки»</em>.
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 from logic.external_assessment import (
     load_existing_peresdachi,
