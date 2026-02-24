@@ -67,7 +67,7 @@ with tab_tests:
     st.subheader("Загрузка файла с оценками (Тесты)")
     grades_file = st.file_uploader(
         "Выберите файл с оценками (external_assessment)",
-        type=['xlsx', 'xls'],
+        type=['xlsx', 'xls', 'csv'],
         key="external_grades_file",
         help="Файл должен содержать колонки: Адрес электронной почты, Тест:Входное/Промежуточное/Итоговое тестирование (Значение)"
     )
@@ -75,7 +75,10 @@ with tab_tests:
     if grades_file:
         try:
             with st.spinner("Загрузка файла с оценками..."):
-                grades_df = pd.read_excel(grades_file)
+                if grades_file.name.endswith('.csv'):
+                    grades_df = pd.read_csv(grades_file)
+                else:
+                    grades_df = pd.read_excel(grades_file)
 
             st.success("Файл с оценками успешно загружен!")
 
@@ -215,16 +218,19 @@ with tab_tests:
 with tab_projects:
     st.subheader("Загрузка файла с оценками (Проекты)")
     project_file = st.file_uploader(
-        "Выберите файл с оценками (CSV)",
-        type=['csv'],
+        "Выберите файл с оценками (CSV или Excel)",
+        type=['csv', 'xlsx', 'xls'],
         key="project_grades_file",
-        help="Файл CSV с колонками 'Задание:...' и 'Адрес электронной почты'"
+        help="Файл (CSV или Excel) с колонками 'Задание:...' и 'Адрес электронной почты'"
     )
 
     if project_file:
         try:
-            with st.spinner("Загрузка CSV файла..."):
-                project_grades_df = pd.read_csv(project_file)
+            with st.spinner("Загрузка файла..."):
+                if project_file.name.endswith('.csv'):
+                    project_grades_df = pd.read_csv(project_file)
+                else:
+                    project_grades_df = pd.read_excel(project_file)
             
             st.success("Файл успешно загружен!")
             
