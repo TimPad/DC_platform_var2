@@ -146,105 +146,102 @@ kode {
 col_info_1, col_info_2 = st.columns([1, 1])
 
 with col_info_1:
-    st.markdown("""
+    html_1 = '''
 <div class="instr-card">
-    <div class="instr-card-title">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-        1. Данные и результаты
-    </div>
-    <div class="instr-text">
-        Все обновлённые оценки автоматически отражаются на дэшборде:
-        <br/>
-        <a href="https://datalens.yandex/n77d62nm8lus8" target="_blank" class="instr-link">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            Yandex DataLens — Внешнее измерение
-        </a>
-    </div>
+<div class="instr-card-title">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+1. Данные и результаты
+</div>
+<div class="instr-text">
+Все обновлённые оценки автоматически отражаются на дэшборде:
+<br/>
+<a href="https://datalens.yandex/n77d62nm8lus8" target="_blank" class="instr-link">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+Yandex DataLens — Внешнее измерение
+</a>
+</div>
 </div>
 <div class="instr-card" style="margin-top: 1rem;">
-    <div class="instr-card-title">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        2. Инфо по студентам
-    </div>
-    <div class="instr-section">
-        <div class="instr-label">🎓 4 курс</div>
-        <div class="instr-text">
-            Внешнее измерение состоит из 3 этапов.<br/>
-            <a href="https://edu.hse.ru/course/view.php?id=253000" target="_blank" class="instr-link">Сдача через курс id=253000</a>
-        </div>
-    </div>
-    <div class="instr-section">
-        <div class="instr-label">🎓 3 курс</div>
-        <div class="instr-text">
-            Оценка формируется через итоговый проект.<br/>
-            <a href="https://edu.hse.ru/course/view.php?id=273033" target="_blank" class="instr-link">Сдача через курс id=273033</a>
-            <div class="instr-alert">
-                <strong>⚠️ Нет оценки?</strong> Возможна техническая ошибка. Попросите студента пересохранить проект.
-            </div>
-        </div>
-    </div>
-    <div class="instr-section">
-        <div class="instr-label">🚀 Продвинутый уровень</div>
-        <div class="instr-text">
-            Дополнительная загрузка <strong>не требуется</strong>.<br/>Идёт перезачёт оценки курсовой 2 курса из архива.
-        </div>
-    </div>
+<div class="instr-card-title">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+2. Инфо по студентам
 </div>
-""", unsafe_allow_html=True)
+<div class="instr-section">
+<div class="instr-label">🎓 4 курс</div>
+<div class="instr-text">
+Внешнее измерение состоит из 3 этапов.<br/>
+<a href="https://edu.hse.ru/course/view.php?id=253000" target="_blank" class="instr-link">Сдача через курс id=253000</a>
+</div>
+</div>
+<div class="instr-section">
+<div class="instr-label">🎓 3 курс</div>
+<div class="instr-text">
+Оценка формируется через итоговый проект.<br/>
+<a href="https://edu.hse.ru/course/view.php?id=273033" target="_blank" class="instr-link">Сдача через курс id=273033</a>
+<div class="instr-alert">
+<strong>⚠️ Нет оценки?</strong> Возможна техническая ошибка. Попросите студента пересохранить проект.
+</div>
+</div>
+</div>
+<div class="instr-section">
+<div class="instr-label">🚀 Продвинутый уровень</div>
+<div class="instr-text">
+Дополнительная загрузка <strong>не требуется</strong>.<br/>Идёт перезачёт оценки курсовой 2 курса из архива.
+</div>
+</div>
+</div>
+'''
+    st.markdown(html_1, unsafe_allow_html=True)
 
 with col_info_2:
-    st.markdown("""
+    html_2 = '''
 <div class="instr-card" style="height: 100%;">
-    <div class="instr-card-title">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        3. Обработка оценок сотрудником
-    </div>
-    
-    <div class="instr-step">
-        <div class="instr-step-num">1</div>
-        <div class="instr-step-content instr-text">
-            <div class="instr-step-title">Экспорт из SmartLMS</div>
-            Зайдите в курс (4к: <kode>253000</kode>, 3к: <kode>273033</kode>).<br/>
-            <strong>Оценки → Экспорт</strong>: 📄 CSV или 📊 Excel.
-        </div>
-    </div>
-
-    <div class="instr-step">
-        <div class="instr-step-num">2</div>
-        <div class="instr-step-content instr-text">
-            <div class="instr-step-title">Загрузка файлов</div>
-            🧪 <strong>Тест</strong> (4 курс) или 📁 <strong>Проект</strong> (3 курс).<br/>
-            Загрузите файл ниже и нажмите обработать.
-        </div>
-    </div>
-
-    <div class="instr-step">
-        <div class="instr-step-num">3</div>
-        <div class="instr-step-content instr-text">
-            <div class="instr-step-title">Выгрузка</div>
-            🆕 <strong>Только новые</strong> — для инкрементального обновления.<br/>
-            📋 <strong>Полная ведомость</strong> — для сверки.
-        </div>
-    </div>
-
-    <div class="instr-step">
-        <div class="instr-step-num">4</div>
-        <div class="instr-step-content instr-text">
-            <div class="instr-step-title">Дополнение из SmartReg</div>
-            Добавьте ID дисциплины и Период (напр., <kode>2024/2025 2 модуль</kode>).
-        </div>
-    </div>
-
-    <div class="instr-step">
-        <div class="instr-step-num">5</div>
-        <div class="instr-step-content instr-text">
-            <div class="instr-step-title">Финальная загрузка</div>
-            Отправьте файл Голубеву Александру.<br/>
-            <span style="color:var(--apple-accent)">💡 Рекомендация:</span> в письме указать <em>«загрузка первичной попытки»</em>.
-        </div>
-    </div>
+<div class="instr-card-title">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+3. Обработка оценок сотрудником
 </div>
-""", unsafe_allow_html=True)
+<div class="instr-step">
+<div class="instr-step-num">1</div>
+<div class="instr-step-content instr-text">
+<div class="instr-step-title">Экспорт из SmartLMS</div>
+Зайдите в курс (4к: <kode>253000</kode>, 3к: <kode>273033</kode>).<br/>
+<strong>Оценки → Экспорт</strong>: 📄 CSV или 📊 Excel.
+</div>
+</div>
+<div class="instr-step">
+<div class="instr-step-num">2</div>
+<div class="instr-step-content instr-text">
+<div class="instr-step-title">Загрузка файлов</div>
+🧪 <strong>Тест</strong> (4 курс) или 📁 <strong>Проект</strong> (3 курс).<br/>
+Загрузите файл ниже и нажмите обработать.
+</div>
+</div>
+<div class="instr-step">
+<div class="instr-step-num">3</div>
+<div class="instr-step-content instr-text">
+<div class="instr-step-title">Выгрузка</div>
+🆕 <strong>Только новые</strong> — для инкрементального обновления.<br/>
+📋 <strong>Полная ведомость</strong> — для сверки.
+</div>
+</div>
+<div class="instr-step">
+<div class="instr-step-num">4</div>
+<div class="instr-step-content instr-text">
+<div class="instr-step-title">Дополнение из SmartReg</div>
+Добавьте ID дисциплины и Период (напр., <kode>2024/2025 2 модуль</kode>).
+</div>
+</div>
+<div class="instr-step">
+<div class="instr-step-num">5</div>
+<div class="instr-step-content instr-text">
+<div class="instr-step-title">Финальная загрузка</div>
+Отправьте файл Голубеву Александру.<br/>
+<span style="color:var(--apple-accent)">💡 Рекомендация:</span> в письме указать <em>«загрузка первичной попытки»</em>.
+</div>
+</div>
+</div>
+'''
+    st.markdown(html_2, unsafe_allow_html=True)
 
 from logic.external_assessment import (
     load_existing_peresdachi,
