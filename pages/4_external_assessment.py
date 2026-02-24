@@ -170,14 +170,14 @@ Yandex DataLens — Внешнее измерение
 <div class="instr-label">🎓 4 курс</div>
 <div class="instr-text">
 Внешнее измерение состоит из 3 этапов.<br/>
-<a href="https://edu.hse.ru/course/view.php?id=253000" target="_blank" class="instr-link">Сдача через курс id=253000</a>
+<a href="https://edu.hse.ru/course/view.php?id=253000" target="_blank" class="instr-link">Сдача через курс id=253000 (самозапись)</a>
 </div>
 </div>
 <div class="instr-section">
 <div class="instr-label">🎓 3 курс</div>
 <div class="instr-text">
 Оценка формируется через итоговый проект.<br/>
-<a href="https://edu.hse.ru/course/view.php?id=273033" target="_blank" class="instr-link">Сдача через курс id=273033</a>
+<a href="https://edu.hse.ru/course/view.php?id=273033" target="_blank" class="instr-link">Сдача через курс id=273033 (самозапись)</a>
 <div class="instr-alert">
 <strong>⚠️ Нет оценки за проект?</strong> Возможна была техническая ошибка. Попросите студента перезагрузить проект.
 </div>
