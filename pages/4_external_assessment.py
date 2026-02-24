@@ -265,7 +265,7 @@ except Exception as e:
 st.markdown("---")
 
 # Используем табы для разделения функционала
-tab_tests, tab_projects = st.tabs(["Пересдачи (Тесты)", "Внешнее измерение (Проекты)"])
+tab_tests, tab_projects = st.tabs(["Для 4 курса (Тесты)", "Для 3 курса (Проекты)"])
 
 # --- ВКЛАДКА 1: ПЕРЕСДАЧИ (ТЕСТЫ) ---
 with tab_tests:
