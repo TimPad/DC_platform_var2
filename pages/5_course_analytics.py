@@ -256,6 +256,12 @@ else:
     if st.button("Обработать курсы", type="primary", key="process_courses_btn"):
         with st.spinner("Обработка данных..."):
             try:
+                from logic.student_management import load_students_from_supabase
+                st.info("Получение списка зарегистрированных студентов из базы...")
+                all_students_df = load_students_from_supabase()
+                enrolled_emails = set(all_students_df['Адрес электронной почты'].str.lower().str.strip())
+                st.success(f"Загружено {len(enrolled_emails)} уникальных студентов из базы.")
+
                 st.info("Обработка файлов курсов...")
                 course_names = ['ЦГ', 'Питон', 'Андан']
                 course_files = [course_cg_file, course_python_file, course_analysis_file]
@@ -266,8 +272,14 @@ else:
                     if course_data is None:
                         st.error(f"Ошибка обработки курса {course_name}")
                         st.stop()
+                    
+                    # Отфильтровать только тех студентов, чья почта есть в загруженном списке
+                    initial_count = len(course_data)
+                    course_data = course_data[course_data['Корпоративная почта'].str.lower().str.strip().isin(enrolled_emails)]
+                    filtered_count = len(course_data)
+                    
+                    st.success(f"Обработан курс {course_name}: {filtered_count} записей (отброшено {initial_count - filtered_count} незарегистрированных)")
                     course_data_list.append(course_data)
-                    st.success(f"Обработан курс {course_name}: {len(course_data)} записей")
                 
                 # Загрузка в Supabase
                 st.info("Обновление данных курсов в Supabase...")
