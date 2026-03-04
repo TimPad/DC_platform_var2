@@ -177,10 +177,19 @@ def extract_course_data(uploaded_file, course_name):
                         if any(pattern in val_str for pattern in ['2020', '2021', '2022', '2023', '2024']) and ':' in val_str:
                             completed_tasks += 1
                 percentage = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
-                completion_data.append({'email': str(email_val).lower().strip(), 'percentage': percentage})
+                
+                fio_val = str(row.iloc[0]).strip() if not pd.isna(row.iloc[0]) else ''
+                user_data_val = str(row.get('Данные о пользователе', row.get('User information', ''))).strip()
+
+                completion_data.append({
+                    'email': str(email_val).lower().strip(), 
+                    'percentage': percentage,
+                    'fio': fio_val,
+                    'user_data': user_data_val
+                })
             if completion_data:
                 result_df = pd.DataFrame(completion_data)
-                result_df.columns = ['Корпоративная почта', f'Процент_{course_name}']
+                result_df.columns = ['Корпоративная почта', f'Процент_{course_name}', 'ФИО', 'Данные о пользователе']
                 st.success(f"Рассчитан процент завершения для {len(result_df)} студентов курса {course_name}")
                 return result_df
 
@@ -200,10 +209,19 @@ def extract_course_data(uploaded_file, course_name):
                         if 'Выполнено' in val or 'выполнено' in val.lower():
                             completed_tasks += 1
                 percentage = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
-                completion_data.append({'email': str(email_val).lower().strip(), 'percentage': percentage})
+                
+                fio_val = str(row.iloc[0]).strip() if not pd.isna(row.iloc[0]) else ''
+                user_data_val = str(row.get('Данные о пользователе', row.get('User information', ''))).strip()
+
+                completion_data.append({
+                    'email': str(email_val).lower().strip(), 
+                    'percentage': percentage,
+                    'fio': fio_val,
+                    'user_data': user_data_val
+                })
             if completion_data:
                 result_df = pd.DataFrame(completion_data)
-                result_df.columns = ['Корпоративная почта', f'Процент_{course_name}']
+                result_df.columns = ['Корпоративная почта', f'Процент_{course_name}', 'ФИО', 'Данные о пользователе']
                 st.success(f"Рассчитан процент завершения для {len(result_df)} студентов курса {course_name}")
                 return result_df
 
@@ -273,12 +291,49 @@ else:
                         st.error(f"Ошибка обработки курса {course_name}")
                         st.stop()
                     
-                    # Отфильтровать только тех студентов, чья почта есть в загруженном списке
+                    # Найти тех, кого нет в базе (отсутствуют в enrolled_emails)
                     initial_count = len(course_data)
-                    course_data = course_data[course_data['Корпоративная почта'].str.lower().str.strip().isin(enrolled_emails)]
-                    filtered_count = len(course_data)
+                    missing_mask = ~course_data['Корпоративная почта'].str.lower().str.strip().isin(enrolled_emails)
+                    missing_students_df = course_data[missing_mask]
                     
-                    st.success(f"Обработан курс {course_name}: {filtered_count} записей (отброшено {initial_count - filtered_count} незарегистрированных)")
+                    if not missing_students_df.empty:
+                        new_students = []
+                        for _, row in missing_students_df.iterrows():
+                            user_data = str(row['Данные о пользователе']) if pd.notna(row['Данные о пользователе']) else ''
+                            fio = str(row['ФИО']) if pd.notna(row['ФИО']) else ''
+                            
+                            # Парсим Данные о пользователе (Факультет; Образовательная программа; Курс; Группа)
+                            parts = [p.strip() for p in user_data.split(';')] if user_data and user_data.lower() != 'nan' else []
+                            
+                            faculty = parts[0] if len(parts) > 0 else ''
+                            op = parts[1] if len(parts) > 1 else ''
+                            course_lvl = parts[2] if len(parts) > 2 else ''
+                            group = parts[3] if len(parts) > 3 else ''
+                            
+                            new_students.append({
+                                'Корпоративная почта': row['Корпоративная почта'],
+                                'ФИО': fio,
+                                'Факультет': faculty,
+                                'Образовательная программа': op,
+                                'Курс': course_lvl,
+                                'Группа': group
+                            })
+                        
+                        if new_students:
+                            new_students_df = pd.DataFrame(new_students)
+                            from logic.student_management import upload_students_to_supabase
+                            success, msg = upload_students_to_supabase(supabase, new_students_df)
+                            if success:
+                                st.success(f"Добавлено {len(new_students_df)} новых студентов из файла курса {course_name} в общую базу.")
+                                # Добавляем новые email-ы в список, чтобы они не добавлялись повторно
+                                enrolled_emails.update(new_students_df['Корпоративная почта'].str.lower().str.strip())
+                            else:
+                                st.error(f"Ошибка добавления новых студентов: {msg}")
+                    
+                    # Мы больше не отбрасываем незарегистрированных студентов из course_data
+                    processed_count = len(course_data)
+                    
+                    st.success(f"Обработан курс {course_name}: {processed_count} записей (найдено и добавлено в БД {len(missing_students_df)} новых студентов)")
                     course_data_list.append(course_data)
                 
                 # Загрузка в Supabase
