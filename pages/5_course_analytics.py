@@ -310,13 +310,26 @@ else:
                             course_lvl = parts[2] if len(parts) > 2 else ''
                             group = parts[3] if len(parts) > 3 else ''
                             
+                            campus = ''
+                            if op:
+                                op_with_spaces = f" {op} "
+                                if " НН " in op_with_spaces:
+                                    campus = "НИУ ВШЭ - Нижний Новгород"
+                                elif " СПБ " in op_with_spaces:
+                                    campus = "НИУ ВШЭ - Санкт-Петербург"
+                                elif " П " in op_with_spaces:
+                                    campus = "НИУ ВШЭ - Пермь"
+                                elif " М " in op_with_spaces:
+                                    campus = "Москва"
+                            
                             new_students.append({
                                 'Корпоративная почта': row['Корпоративная почта'],
                                 'ФИО': fio,
                                 'Факультет': faculty,
                                 'Образовательная программа': op,
                                 'Курс': course_lvl,
-                                'Группа': group
+                                'Группа': group,
+                                'Филиал (кампус)': campus
                             })
                         
                         if new_students:
