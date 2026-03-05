@@ -322,6 +322,9 @@ else:
                                 elif " М " in op_with_spaces:
                                     campus = "Москва"
                             
+                            if not campus:
+                                continue
+                                
                             new_students.append({
                                 'Корпоративная почта': row['Корпоративная почта'],
                                 'ФИО': fio,
