@@ -245,6 +245,7 @@ with col_info_2:
 
 from logic.external_assessment import (
     load_existing_peresdachi,
+    load_peresdachi_by_date_range,
     load_student_io_from_supabase,
     save_to_supabase,
     get_new_records_from_dataframe,
@@ -570,10 +571,57 @@ with tab_projects:
 
 
 # Общая инфо панель внизу (вне табов)
-with st.expander("Текущее состояние базы данных (peresdachi)"):
-    existing_peresdachi = load_existing_peresdachi()
-    if existing_peresdachi.empty:
-        st.info("База пуста")
-    else:
-        st.metric("Всего записей", len(existing_peresdachi))
-        st.dataframe(existing_peresdachi.head(10), use_container_width=True)
+st.markdown("---")
+with st.expander("📥 Выгрузка данных из базы (peresdachi)", expanded=False):
+    st.markdown("Выберите диапазон дат добавления записей в базу данных:")
+
+    from datetime import date, timedelta
+    col_date1, col_date2 = st.columns(2)
+    with col_date1:
+        date_from = st.date_input(
+            "Дата от",
+            value=date.today() - timedelta(days=30),
+            key="peresdachi_date_from"
+        )
+    with col_date2:
+        date_to = st.date_input(
+            "Дата до",
+            value=date.today(),
+            key="peresdachi_date_to"
+        )
+
+    if st.button("Загрузить записи", key="load_peresdachi_by_date"):
+        if date_from > date_to:
+            st.error("Дата начала не может быть позже даты окончания.")
+        else:
+            with st.spinner("Загрузка данных из базы..."):
+                try:
+                    filtered_df = load_peresdachi_by_date_range(date_from, date_to)
+                    st.session_state["peresdachi_filtered_df"] = filtered_df
+                    st.session_state["peresdachi_filter_dates"] = (date_from, date_to)
+                except Exception as e:
+                    st.error(f"Ошибка при загрузке данных: {str(e)}")
+
+    if "peresdachi_filtered_df" in st.session_state:
+        filtered_df = st.session_state["peresdachi_filtered_df"]
+        d_from, d_to = st.session_state.get("peresdachi_filter_dates", (None, None))
+
+        if filtered_df.empty:
+            st.info(f"Записей за период {d_from} — {d_to} не найдено.")
+        else:
+            st.metric("Найдено записей", len(filtered_df))
+            st.dataframe(filtered_df, use_container_width=True)
+
+            output_filtered = io.BytesIO()
+            with pd.ExcelWriter(output_filtered, engine='openpyxl') as writer:
+                filtered_df.to_excel(writer, index=False)
+            output_filtered.seek(0)
+
+            file_label = f"{d_from}_to_{d_to}".replace("-", "") if d_from else "filtered"
+            st.download_button(
+                label="⬇️ Скачать XLSX",
+                data=output_filtered,
+                file_name=f"peresdachi_{file_label}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_peresdachi_filtered"
+            )

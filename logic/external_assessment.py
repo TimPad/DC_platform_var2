@@ -17,6 +17,52 @@ def load_existing_peresdachi() -> pd.DataFrame:
     except Exception as e:
         raise ValueError(f"Таблица peresdachi не найдена или пуста: {str(e)}")
 
+def load_peresdachi_by_date_range(date_from, date_to) -> pd.DataFrame:
+    """Загрузка записей из таблицы peresdachi с фильтром по дате добавления (created_at).
+    
+    Args:
+        date_from: datetime.date — начало диапазона (включительно)
+        date_to:   datetime.date — конец диапазона (включительно)
+    
+    Returns:
+        pd.DataFrame с записями за указанный период
+    """
+    try:
+        from datetime import timedelta
+        supabase = get_supabase_client()
+
+        # Преобразуем даты в ISO-строки для Supabase
+        from_str = date_from.isoformat()
+        # Добавляем 1 день, чтобы включить записи созданные в течение всего дня date_to
+        to_str = (date_to + timedelta(days=1)).isoformat()
+
+        all_data = []
+        page_size = 1000
+        offset = 0
+
+        while True:
+            response = (
+                supabase.table(constants.DB_TABLE_PERESDACHI)
+                .select("*")
+                .gte("created_at", from_str)
+                .lt("created_at", to_str)
+                .range(offset, offset + page_size - 1)
+                .execute()
+            )
+            if response.data:
+                all_data.extend(response.data)
+                if len(response.data) < page_size:
+                    break
+                offset += page_size
+            else:
+                break
+
+        if all_data:
+            return pd.DataFrame(all_data)
+        return pd.DataFrame()
+    except Exception as e:
+        raise ValueError(f"Ошибка при загрузке данных peresdachi по диапазону дат: {str(e)}")
+
 def load_student_io_from_supabase() -> pd.DataFrame:
     """Загрузка данных из таблицы student_io"""
     try:
