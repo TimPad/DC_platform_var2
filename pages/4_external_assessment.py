@@ -8,12 +8,9 @@ import pandas as pd
 import io
 from datetime import datetime
 from typing import Tuple
-from utils import icon, apply_custom_css, get_supabase_client, load_lottie_url
+from utils import icon, get_supabase_client, load_lottie_url
 from constants import LOTTIE_SUCCESS_URL, LOTTIE_EMPTY_URL
 from streamlit_lottie import st_lottie
-
-# Применяем кастомные стили
-apply_custom_css()
 
 # Заголовок страницы
 st.markdown(
@@ -249,6 +246,7 @@ from logic.external_assessment import (
     load_student_io_from_supabase,
     save_to_supabase,
     get_new_records_from_dataframe,
+    deduplicate_and_split,
     process_external_assessment,
     process_project_assessment,
     update_final_grades
@@ -327,42 +325,18 @@ with tab_tests:
                             # 1. Сохраняем результат в session_state
                             st.session_state['result_df_tests'] = result_df
                             
-                            # 2. Логика обработки дубликатов и сохранения
-                            # Определяем новые записи
-                            display_new_records_uncleaned = get_new_records_from_dataframe(result_df)
-                            new_count_uncleaned = len(display_new_records_uncleaned)
-                            total_count_uncleaned = len(result_df)
+                            # 2. Дедупликация и разделение на новые/старые
+                            split = deduplicate_and_split(result_df)
 
-                            # Проверка и удаление дубликатов
-                            conflict_cols = ["Адрес электронной почты", "Наименование дисциплины"]
-                            result_df_cleaned = result_df.drop_duplicates(subset=conflict_cols, keep='first')
-                            duplicates_removed_result = total_count_uncleaned - len(result_df_cleaned)
-                            
-                            if duplicates_removed_result > 0:
-                                result_df = result_df_cleaned
-                                display_new_records = get_new_records_from_dataframe(result_df)
-                                new_count = len(display_new_records)
-                                total_count = len(result_df)
-                            else:
-                                display_new_records = display_new_records_uncleaned
-                                new_count = new_count_uncleaned
-                                total_count = total_count_uncleaned
-
-                            display_new_records = display_new_records.drop_duplicates(subset=conflict_cols, keep='first')
-                            
                             # Сохраняем обработанное состояние для отображения
                             st.session_state['tests_processed_state'] = {
-                                'result_df': result_df,
-                                'display_new_records': display_new_records,
-                                'total_count': total_count,
-                                'new_count': new_count,
-                                'duplicates_removed': duplicates_removed_result,
+                                **split,
                                 'processed_at': datetime.now(),
                                 'save_msg': ''
                             }
 
                             # Автоматическое сохранение при обработке
-                            save_success, save_msg = save_to_supabase(display_new_records)
+                            save_success, save_msg = save_to_supabase(split['display_new_records'])
                             st.session_state['tests_processed_state']['save_success'] = save_success
                             st.session_state['tests_processed_state']['save_msg'] = save_msg
                             
@@ -471,37 +445,17 @@ with tab_projects:
                                 # 1. Сохраняем в session_state
                                 st.session_state['result_df_projects'] = result_df
                                 
-                                # 2. Обработка дублей
-                                display_new_records_uncleaned = get_new_records_from_dataframe(result_df)
-                                new_count_uncleaned = len(display_new_records_uncleaned)
-                                total_count_uncleaned = len(result_df)
-
-                                conflict_cols = ["Адрес электронной почты", "Наименование дисциплины"]
-                                result_df_cleaned = result_df.drop_duplicates(subset=conflict_cols, keep='first')
-                                duplicates_removed = total_count_uncleaned - len(result_df_cleaned)
-                                
-                                if duplicates_removed > 0:
-                                    result_df = result_df_cleaned
-                                    display_new_records = get_new_records_from_dataframe(result_df)
-                                else:
-                                    display_new_records = display_new_records_uncleaned
-                                
-                                display_new_records = display_new_records.drop_duplicates(subset=conflict_cols, keep='first')
-                                new_count = len(display_new_records)
-                                total_count = len(result_df)
+                                # 2. Дедупликация и разделение на новые/старые
+                                split = deduplicate_and_split(result_df)
 
                                 # Сохранение состояния
                                 st.session_state['projects_processed_state'] = {
-                                    'result_df': result_df,
-                                    'display_new_records': display_new_records,
-                                    'total_count': total_count,
-                                    'new_count': new_count,
-                                    'duplicates_removed': duplicates_removed,
+                                    **split,
                                     'processed_at': datetime.now(),
                                     'save_msg': ''
                                 }
 
-                                save_success, save_msg = save_to_supabase(display_new_records)
+                                save_success, save_msg = save_to_supabase(split['display_new_records'])
                                 st.session_state['projects_processed_state']['save_success'] = save_success
                                 st.session_state['projects_processed_state']['save_msg'] = save_msg
                                 

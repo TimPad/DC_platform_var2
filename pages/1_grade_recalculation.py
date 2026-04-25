@@ -8,10 +8,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import io
-from utils import icon, apply_custom_css
-
-# Применяем кастомные стили
-apply_custom_css()
+from utils import icon
 
 # Заголовок страницы
 st.markdown(

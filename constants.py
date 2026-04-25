@@ -422,8 +422,18 @@ PROJECT_COL_EXTENDED = "Задание:Интерактивная история
 
 PROJECT_COLUMNS = [
     PROJECT_COL_HUMANITIES,
-    PROJECT_COL_SOCIO_ECON, 
+    PROJECT_COL_SOCIO_ECON,
     PROJECT_COL_NATURAL,
     PROJECT_COL_GENERAL,
     PROJECT_COL_EXTENDED
 ]
+
+# =============================================================================
+# COMMON PATTERNS
+# =============================================================================
+
+HSE_EMAIL_DOMAIN = '@edu.hse.ru'
+
+# Stage detection keywords for grade recalculation
+STAGE_KEYWORD_ANALYSIS = 'анализу данных'
+STAGE_KEYWORD_PROGRAMMING = 'программированию'

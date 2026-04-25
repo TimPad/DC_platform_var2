@@ -7,11 +7,8 @@ import streamlit as st
 import json
 import html
 import streamlit.components.v1 as components
-from utils import icon, apply_custom_css, get_nebius_client
+from utils import icon, get_nebius_client
 from constants import LOGO_URL, LOGO_URL_BLACK, LOGO_URL_PNG, HTML_EXAMPLE, SYSTEM_MESSAGE, TEMPLATES, WEBINAR_TEMPLATE
-
-# Применяем кастомные стили
-apply_custom_css()
 
 # Заголовок страницы
 st.markdown(
@@ -576,7 +573,7 @@ if 'generated_html' in st.session_state:
                     border: none;
                     display: block;
                 "
-                sandbox="allow-same-origin allow-scripts"
+                sandbox="allow-same-origin"
             ></iframe>
         </div>
         """

@@ -5,9 +5,9 @@ Handling student list loading, parsing, and updating in Supabase.
 import pandas as pd
 from typing import Tuple
 import time
-from io import StringIO
 from utils import get_supabase_client, fetch_all_from_supabase
-from constants import STUDENT_REQUIRED_COLUMNS, STUDENT_DB_TO_DF_MAPPING
+from logic.data_utils import read_uploaded_file
+from constants import STUDENT_REQUIRED_COLUMNS, STUDENT_DB_TO_DF_MAPPING, HSE_EMAIL_DOMAIN
 
 def load_student_list_file(uploaded_file) -> pd.DataFrame:
     """
@@ -15,23 +15,7 @@ def load_student_list_file(uploaded_file) -> pd.DataFrame:
     Парсит файл, находит нужные колонки и нормализует данные.
     """
     try:
-        file_name = uploaded_file.name.lower()
-        if file_name.endswith(('.xlsx', '.xls')):
-            df = pd.read_excel(uploaded_file)
-        elif file_name.endswith('.csv'):
-            content = uploaded_file.getvalue()
-            try:
-                # Попытка 1: UTF-16 + Tab (часто бывает в выгрузках)
-                df = pd.read_csv(StringIO(content.decode('utf-16')), sep='\t')
-            except (UnicodeDecodeError, pd.errors.ParserError):
-                try:
-                    # Попытка 2: UTF-8
-                    df = pd.read_csv(StringIO(content.decode('utf-8')))
-                except UnicodeDecodeError:
-                    # Попытка 3: CP1251 (Windows)
-                    df = pd.read_csv(StringIO(content.decode('cp1251')))
-        else:
-            raise ValueError("Неподдерживаемый формат файла")
+        df = read_uploaded_file(uploaded_file)
 
         # Поиск колонок по вариациям названий (из constants.py)
         found_columns = {}
@@ -69,7 +53,7 @@ def load_student_list_file(uploaded_file) -> pd.DataFrame:
 
         # Фильтрация и очистка email
         if 'Корпоративная почта' in result_df.columns:
-            result_df = result_df[result_df['Корпоративная почта'].astype(str).str.contains('@edu.hse.ru', na=False)]
+            result_df = result_df[result_df['Корпоративная почта'].astype(str).str.contains(HSE_EMAIL_DOMAIN, na=False)]
             result_df['Корпоративная почта'] = pd.Series(result_df['Корпоративная почта']).astype(str).str.lower().str.strip()
             
         return result_df
@@ -77,7 +61,7 @@ def load_student_list_file(uploaded_file) -> pd.DataFrame:
     except Exception as e:
         raise ValueError(f"Ошибка загрузки списка студентов: {e}")
 
-def upload_students_to_supabase(supabase, student_data: pd.DataFrame) -> bool:
+def upload_students_to_supabase(supabase, student_data: pd.DataFrame) -> Tuple[bool, str]:
     """
     Загрузка данных студентов в таблицу students с использованием оптимизированного UPSERT.
     """
@@ -92,7 +76,7 @@ def upload_students_to_supabase(supabase, student_data: pd.DataFrame) -> bool:
         
         for _, row in student_data.iterrows():
             email = str(row.get('Корпоративная почта', '')).strip().lower()
-            if not email or '@edu.hse.ru' not in email:
+            if not email or HSE_EMAIL_DOMAIN not in email:
                 continue
             if email in processed_emails:
                 continue

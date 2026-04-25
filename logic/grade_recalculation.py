@@ -3,6 +3,7 @@ Logic for Grade Recalculation Module
 """
 import pandas as pd
 import numpy as np
+from constants import STAGE_KEYWORD_ANALYSIS, STAGE_KEYWORD_PROGRAMMING
 
 def process_grade_recalculation(df: pd.DataFrame, use_dynamics: bool) -> pd.DataFrame:
     """
@@ -33,8 +34,8 @@ def process_grade_recalculation(df: pd.DataFrame, use_dynamics: bool) -> pd.Data
     )
 
     processed_df['Этап'] = 1
-    processed_df.loc[processed_df['Наименование НЭ'].str.contains('анализу данных', case=False, na=False), 'Этап'] = 3
-    processed_df.loc[processed_df['Наименование НЭ'].str.contains('программированию', case=False, na=False), 'Этап'] = 2
+    processed_df.loc[processed_df['Наименование НЭ'].str.contains(STAGE_KEYWORD_ANALYSIS, case=False, na=False), 'Этап'] = 3
+    processed_df.loc[processed_df['Наименование НЭ'].str.contains(STAGE_KEYWORD_PROGRAMMING, case=False, na=False), 'Этап'] = 2
 
     dpr_results = []
     ie_results = []

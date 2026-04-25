@@ -308,6 +308,36 @@ def process_project_assessment(grades_df: pd.DataFrame, students_df: pd.DataFram
 
     return result_df, logs
 
+def deduplicate_and_split(result_df: pd.DataFrame, conflict_cols: List[str] = None):
+    """
+    Дедупликация результата и разделение на полный набор и только новые записи.
+
+    Returns:
+        dict с ключами: result_df, display_new_records, total_count, new_count, duplicates_removed
+    """
+    if conflict_cols is None:
+        conflict_cols = [constants.COL_EMAIL, constants.COL_DISCIPLINE]
+
+    total_count_uncleaned = len(result_df)
+
+    result_df_cleaned = result_df.drop_duplicates(subset=conflict_cols, keep='first')
+    duplicates_removed = total_count_uncleaned - len(result_df_cleaned)
+
+    if duplicates_removed > 0:
+        result_df = result_df_cleaned
+
+    display_new_records = get_new_records_from_dataframe(result_df)
+    display_new_records = display_new_records.drop_duplicates(subset=conflict_cols, keep='first')
+
+    return {
+        'result_df': result_df,
+        'display_new_records': display_new_records,
+        'total_count': len(result_df),
+        'new_count': len(display_new_records),
+        'duplicates_removed': duplicates_removed,
+    }
+
+
 def update_final_grades(df: pd.DataFrame) -> Tuple[bool, int, str]:
     """Обновление таблицы final_grades в Supabase на основе новых оценок за проекты."""
     try:

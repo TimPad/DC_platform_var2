@@ -5,15 +5,12 @@ UPSERT в таблицу students
 
 import streamlit as st
 import pandas as pd
-from utils import icon, apply_custom_css, get_supabase_client
+from utils import icon, get_supabase_client
 from logic.student_management import (
     load_student_list_file, 
     upload_students_to_supabase, 
     load_students_from_supabase
 )
-
-# Применяем кастомные стили
-apply_custom_css()
 
 # Заголовок страницы
 st.markdown(

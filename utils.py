@@ -13,7 +13,7 @@ from streamlit_lottie import st_lottie
 # =============================================================================
 # КОНСТАНТЫ
 # =============================================================================
-from constants import LOGO_URL, HTML_EXAMPLE, SYSTEM_MESSAGE
+from constants import LOGO_URL
 
 # =============================================================================
 # SUPABASE HELPERS
@@ -267,5 +267,5 @@ def load_lottie_url(url: str):
         if r.status_code != 200:
             return None
         return r.json()
-    except:
+    except Exception:
         return None

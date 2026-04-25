@@ -6,11 +6,8 @@
 import streamlit as st
 import pandas as pd
 import time
-from io import StringIO
-from utils import icon, apply_custom_css, get_supabase_client
-
-# Применяем кастомные стили
-apply_custom_css()
+from utils import icon, get_supabase_client
+from logic.data_utils import read_uploaded_file
 
 # Заголовок страницы
 st.markdown(
@@ -96,19 +93,9 @@ def upload_course_data_to_supabase(supabase, course_data, course_name):
 def extract_course_data(uploaded_file, course_name):
     """Извлечение данных курса из файла"""
     try:
-        file_name = uploaded_file.name.lower()
-        if file_name.endswith(('.xlsx', '.xls')):
-            df = pd.read_excel(uploaded_file)
-        elif file_name.endswith('.csv'):
-            content = uploaded_file.getvalue()
-            try:
-                df = pd.read_csv(StringIO(content.decode('utf-16')), sep='\t')
-            except (UnicodeDecodeError, pd.errors.ParserError):
-                try:
-                    df = pd.read_csv(StringIO(content.decode('utf-8')))
-                except UnicodeDecodeError:
-                    df = pd.read_csv(StringIO(content.decode('cp1251')))
-        else:
+        try:
+            df = read_uploaded_file(uploaded_file)
+        except ValueError:
             st.error(f"Неподдерживаемый формат файла для курса {course_name}")
             return None
 

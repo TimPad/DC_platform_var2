@@ -9,10 +9,7 @@ import io
 import os
 import tempfile
 from typing import Dict, Tuple
-from utils import icon, apply_custom_css
-
-# Применяем кастомные стили
-apply_custom_css()
+from utils import icon
 
 # Заголовок страницы
 st.markdown(
@@ -135,7 +132,7 @@ col_btn1, col_btn2 = st.columns(2)
 
 with col_btn1:
     # Excel пример студентов
-    excel_example_path = os.path.join(current_dir, 'Сертификаты пример.xlsx')
+    excel_example_path = os.path.join(current_dir, 'examples', 'Сертификаты пример.xlsx')
     if os.path.exists(excel_example_path):
         with open(excel_example_path, 'rb') as example_file:
             excel_example_data = example_file.read()
@@ -151,7 +148,7 @@ with col_btn1:
 
 with col_btn2:
     # Excel справочник навыков
-    skills_example_path = os.path.join(current_dir, 'агрегированные_навыки.xlsx')
+    skills_example_path = os.path.join(current_dir, 'examples', 'агрегированные_навыки.xlsx')
     if os.path.exists(skills_example_path):
         with open(skills_example_path, 'rb') as skills_file:
             skills_data = skills_file.read()
