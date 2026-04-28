@@ -79,6 +79,19 @@ def load_student_io_from_supabase() -> pd.DataFrame:
     except Exception as e:
         raise ValueError(f"Ошибка при загрузке данных из {constants.DB_TABLE_STUDENT_IO}: {str(e)}")
 
+def load_registration_data_from_supabase() -> pd.DataFrame:
+    """Загрузка данных из таблицы registration_data"""
+    try:
+        all_data = fetch_all_from_supabase(constants.DB_TABLE_REGISTRATION_DATA)
+        if all_data:
+            df = pd.DataFrame(all_data)
+            df = clean_email_column(df, constants.COL_EMAIL)
+            return df
+        return pd.DataFrame()
+    except Exception as e:
+        print(f"Ошибка при загрузке данных из {constants.DB_TABLE_REGISTRATION_DATA}: {str(e)}")
+        return pd.DataFrame()
+
 def save_to_supabase(df: pd.DataFrame) -> Tuple[bool, str]:
     """Сохранение данных в таблицу peresdachi в Supabase с использованием insert"""
     try:
@@ -140,33 +153,67 @@ def process_external_assessment(grades_df: pd.DataFrame, students_df: pd.DataFra
     melted_df = pd.melt(grades_df, id_vars=id_cols, value_vars=value_columns, var_name=constants.COL_DISCIPLINE, value_name=constants.COL_GRADE)
     
     # Шаг 4: Присоединение данных студентов
-    students_cols = [constants.COL_FIO, constants.COL_EMAIL, constants.COL_CAMPUS_OLD, constants.COL_FACULTY, constants.COL_PROGRAM, constants.COL_GROUP, constants.COL_COURSE]
-    missing_cols = [col for col in students_cols if col not in students_df.columns]
-    
-    if missing_cols:
-        logs.append(f"Отсутствуют колонки в файле студентов: {missing_cols}")
-        available_cols = [col for col in students_cols if col in students_df.columns]
-    else:
-        available_cols = students_cols
-    
-    students_subset = students_df[available_cols].copy()
     melted_df = clean_email_column(melted_df, constants.COL_EMAIL)
-    students_subset = clean_email_column(students_subset, constants.COL_EMAIL)
     
-    result_df = melted_df.merge(students_subset, on=constants.COL_EMAIL, how='left')
+    registration_df = load_registration_data_from_supabase()
     
-    # Шаг 5: Добавление пустых колонок
-    result_df[constants.COL_ID_DISCIPLINE] = ''
-    result_df[constants.COL_PERIOD] = ''
+    students_cols = [constants.COL_FIO, constants.COL_EMAIL, constants.COL_CAMPUS_OLD, constants.COL_FACULTY, constants.COL_PROGRAM, constants.COL_GROUP, constants.COL_COURSE]
+    avail_stu_cols = [col for col in students_cols if col in students_df.columns]
+    students_subset = clean_email_column(students_df[avail_stu_cols].copy(), constants.COL_EMAIL)
+    if constants.COL_CAMPUS_OLD in students_subset.columns:
+        students_subset = students_subset.rename(columns={constants.COL_CAMPUS_OLD: constants.COL_CAMPUS})
+    students_subset = students_subset.drop_duplicates(subset=[constants.COL_EMAIL])
+        
+    if not registration_df.empty:
+        reg_cols = [
+            constants.COL_FIO, constants.COL_EMAIL, constants.COL_CAMPUS_OLD, constants.COL_CAMPUS, 
+            constants.COL_FACULTY, constants.COL_PROGRAM, constants.COL_GROUP, constants.COL_COURSE, 
+            constants.COL_CANCEL, constants.COL_ID_DISCIPLINE, constants.COL_DISCIPLINE, constants.COL_PERIOD
+        ]
+        avail_reg_cols = [col for col in reg_cols if col in registration_df.columns]
+        reg_subset = clean_email_column(registration_df[avail_reg_cols].copy(), constants.COL_EMAIL)
+        if constants.COL_CAMPUS_OLD in reg_subset.columns and constants.COL_CAMPUS not in reg_subset.columns:
+            reg_subset = reg_subset.rename(columns={constants.COL_CAMPUS_OLD: constants.COL_CAMPUS})
+        merge_keys = [constants.COL_EMAIL]
+        if constants.COL_DISCIPLINE in reg_subset.columns:
+            merge_keys.append(constants.COL_DISCIPLINE)
+            
+        reg_subset = reg_subset.drop_duplicates(subset=merge_keys)
+        
+        result_df = melted_df.merge(reg_subset, on=merge_keys, how='left')
+
+        result_df = result_df.merge(students_subset, on=constants.COL_EMAIL, how='left', suffixes=('', '_stu'))
+        
+        for col in [constants.COL_FIO, constants.COL_CAMPUS, constants.COL_FACULTY, constants.COL_PROGRAM, constants.COL_GROUP, constants.COL_COURSE]:
+            stu_col = col + '_stu'
+            if col in result_df.columns and stu_col in result_df.columns:
+                result_df[col] = result_df[col].fillna(result_df[stu_col])
+            elif stu_col in result_df.columns:
+                result_df[col] = result_df[stu_col]
+                
+        stu_cols_to_drop = [c for c in result_df.columns if c.endswith('_stu')]
+        result_df = result_df.drop(columns=stu_cols_to_drop)
+    else:
+        result_df = melted_df.merge(students_subset, on=constants.COL_EMAIL, how='left')
+    
+    if constants.COL_CANCEL not in result_df.columns:
+        result_df[constants.COL_CANCEL] = ''
+    
+    if constants.COL_ID_DISCIPLINE not in result_df.columns:
+        result_df[constants.COL_ID_DISCIPLINE] = ''
+    else:
+        result_df[constants.COL_ID_DISCIPLINE] = result_df[constants.COL_ID_DISCIPLINE].fillna('')
+
+    if constants.COL_PERIOD not in result_df.columns:
+        result_df[constants.COL_PERIOD] = ''
+    else:
+        result_df[constants.COL_PERIOD] = result_df[constants.COL_PERIOD].fillna('')
     
     # Шаг 6: Переименование и структура
-    if constants.COL_CAMPUS_OLD in result_df.columns:
-        result_df = result_df.rename(columns={constants.COL_CAMPUS_OLD: constants.COL_CAMPUS})
-        
     output_columns = [
         constants.COL_FIO, constants.COL_EMAIL, constants.COL_CAMPUS, constants.COL_FACULTY,
         constants.COL_PROGRAM, constants.COL_GROUP, constants.COL_COURSE, constants.COL_ID_DISCIPLINE,
-        constants.COL_DISCIPLINE, constants.COL_PERIOD, constants.COL_GRADE
+        constants.COL_DISCIPLINE, constants.COL_PERIOD, constants.COL_GRADE, constants.COL_CANCEL
     ]
     final_columns = [col for col in output_columns if col in result_df.columns]
     result_df = result_df[final_columns]
@@ -244,21 +291,64 @@ def process_project_assessment(grades_df: pd.DataFrame, students_df: pd.DataFram
     
     grades_df = clean_email_column(grades_df, constants.COL_EMAIL)
     
+    registration_df = load_registration_data_from_supabase()
+    
     students_cols = [constants.COL_FIO, constants.COL_EMAIL, constants.COL_CAMPUS_OLD, constants.COL_FACULTY, constants.COL_PROGRAM, constants.COL_GROUP, constants.COL_COURSE]
     available_cols = [col for col in students_cols if col in students_df.columns]
     students_subset = clean_email_column(students_df[available_cols].copy(), constants.COL_EMAIL)
+    if constants.COL_CAMPUS_OLD in students_subset.columns:
+        students_subset = students_subset.rename(columns={constants.COL_CAMPUS_OLD: constants.COL_CAMPUS})
+    students_subset = students_subset.drop_duplicates(subset=[constants.COL_EMAIL])
     
-    result_df = grades_df.merge(students_subset, on=constants.COL_EMAIL, how='left')
-    result_df[constants.COL_ID_DISCIPLINE] = ''
-    result_df[constants.COL_PERIOD] = ''
-    
-    if constants.COL_CAMPUS_OLD in result_df.columns:
-        result_df = result_df.rename(columns={constants.COL_CAMPUS_OLD: constants.COL_CAMPUS})
+    if not registration_df.empty:
+        reg_cols = [
+            constants.COL_FIO, constants.COL_EMAIL, constants.COL_CAMPUS_OLD, constants.COL_CAMPUS, 
+            constants.COL_FACULTY, constants.COL_PROGRAM, constants.COL_GROUP, constants.COL_COURSE, 
+            constants.COL_CANCEL, constants.COL_ID_DISCIPLINE, constants.COL_DISCIPLINE, constants.COL_PERIOD
+        ]
+        avail_reg_cols = [col for col in reg_cols if col in registration_df.columns]
+        reg_subset = clean_email_column(registration_df[avail_reg_cols].copy(), constants.COL_EMAIL)
+        if constants.COL_CAMPUS_OLD in reg_subset.columns and constants.COL_CAMPUS not in reg_subset.columns:
+            reg_subset = reg_subset.rename(columns={constants.COL_CAMPUS_OLD: constants.COL_CAMPUS})
+        merge_keys = [constants.COL_EMAIL]
+        if constants.COL_DISCIPLINE in reg_subset.columns:
+            merge_keys.append(constants.COL_DISCIPLINE)
+            
+        reg_subset = reg_subset.drop_duplicates(subset=merge_keys)
         
+        result_df = grades_df.merge(reg_subset, on=merge_keys, how='left')
+
+        result_df = result_df.merge(students_subset, on=constants.COL_EMAIL, how='left', suffixes=('', '_stu'))
+        
+        for col in [constants.COL_FIO, constants.COL_CAMPUS, constants.COL_FACULTY, constants.COL_PROGRAM, constants.COL_GROUP, constants.COL_COURSE]:
+            stu_col = col + '_stu'
+            if col in result_df.columns and stu_col in result_df.columns:
+                result_df[col] = result_df[col].fillna(result_df[stu_col])
+            elif stu_col in result_df.columns:
+                result_df[col] = result_df[stu_col]
+                
+        stu_cols_to_drop = [c for c in result_df.columns if c.endswith('_stu')]
+        result_df = result_df.drop(columns=stu_cols_to_drop)
+    else:
+        result_df = grades_df.merge(students_subset, on=constants.COL_EMAIL, how='left')
+        
+    if constants.COL_CANCEL not in result_df.columns:
+        result_df[constants.COL_CANCEL] = ''
+        
+    if constants.COL_ID_DISCIPLINE not in result_df.columns:
+        result_df[constants.COL_ID_DISCIPLINE] = ''
+    else:
+        result_df[constants.COL_ID_DISCIPLINE] = result_df[constants.COL_ID_DISCIPLINE].fillna('')
+
+    if constants.COL_PERIOD not in result_df.columns:
+        result_df[constants.COL_PERIOD] = ''
+    else:
+        result_df[constants.COL_PERIOD] = result_df[constants.COL_PERIOD].fillna('')
+    
     output_columns = [
         constants.COL_FIO, constants.COL_EMAIL, constants.COL_CAMPUS, constants.COL_FACULTY,
         constants.COL_PROGRAM, constants.COL_GROUP, constants.COL_COURSE,
-        constants.COL_DISCIPLINE, constants.COL_GRADE, constants.COL_ID_DISCIPLINE, constants.COL_PERIOD
+        constants.COL_DISCIPLINE, constants.COL_GRADE, constants.COL_ID_DISCIPLINE, constants.COL_PERIOD, constants.COL_CANCEL
     ]
     
     final_columns = [col for col in output_columns if col in result_df.columns]

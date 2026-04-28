@@ -386,6 +386,7 @@ DB_TABLE_STUDENT_IO = 'student_io'
 DB_TABLE_PERESDACHI = 'peresdachi'
 DB_TABLE_FINAL_GRADES = 'final_grades'
 DB_TABLE_STUDENTS = 'students'
+DB_TABLE_REGISTRATION_DATA = 'registration_data'
 
 # Common Column Names
 COL_EMAIL = 'Адрес электронной почты'
@@ -402,6 +403,7 @@ COL_COURSE = 'Курс'
 COL_EDU_LEVEL = 'Уровень образования'
 COL_ID_DISCIPLINE = 'ID дисциплины'
 COL_PERIOD = 'Период аттестации'
+COL_CANCEL = 'Отмена'
 
 # Discipline Names
 DISCIPLINE_INPUT = 'Внешнее измерение цифровых компетенций. Входной контроль'
