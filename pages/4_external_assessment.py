@@ -232,7 +232,7 @@ with col_info_2:
 <div class="instr-step-num">5</div>
 <div class="instr-step-content instr-text">
 <div class="instr-step-title">Финальная загрузка</div>
-<a href="https://pmo.hse.ru/servicedesk/customer/portal/81/create/1274" target="_blank" class="instr-link">
+<a href="https://pmo.hse.ru/servicedesk/customer/portal/81/create/1274" target="_blank" class="instr-link">Заявка на загрузку оценок</a>
 Отправьте файл Голубеву Александру (Просьба передать на EDUSD Голубеву А.А.<br/>
 <span style="color:var(--apple-accent)">💡 Рекомендация:</span> в письме указать <em>«загрузка первичной попытки»</em>.
 </div>
