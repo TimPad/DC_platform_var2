@@ -176,14 +176,14 @@ Yandex DataLens — Внешнее измерение
 Оценка формируется через итоговый проект.<br/>
 <a href="https://edu.hse.ru/grade/export/txt/index.php?id=273033" target="_blank" class="instr-link">Перейти к экспорту оценок курса id=273033 (самозапись)</a>
 <div class="instr-alert">
-<strong>⚠️ Нет оценки за проект?</strong> Возможна была техническая ошибка. Попросите студента перезагрузить проект.
+<strong>⚠️ Нет оценки за проект?</strong> Возможна была техническая ошибка. Попросите студента перезить проект.
 </div>
 </div>
 </div>
 <div class="instr-section">
 <div class="instr-label">🚀 Продвинутый уровень 3 курс</div>
 <div class="instr-text">
-Дополнительная загрузка <strong>не требуется</strong>.<br/>Идёт перезачёт оценки курсовой 2 курса.
+Дополнительная зка <strong>не требуется</strong>.<br/>Идёт перезачёт оценки курсовой 2 курса.
 </div>
 </div>
 </div>
@@ -208,9 +208,9 @@ with col_info_2:
 <div class="instr-step">
 <div class="instr-step-num">2</div>
 <div class="instr-step-content instr-text">
-<div class="instr-step-title">Загрузка файлов</div>
+<div class="instr-step-title">зка файлов</div>
 🧪 <strong>Тест</strong> (4 курс) или 📁 <strong>Проект</strong> (3 курс).<br/>
-Загрузите файл ниже и нажмите обработать.
+зите файл ниже и нажмите обработать.
 </div>
 </div>
 <div class="instr-step">
@@ -232,7 +232,7 @@ with col_info_2:
 <div class="instr-step-num">5</div>
 <div class="instr-step-content instr-text">
 <div class="instr-step-title">Финальная загрузка</div>
-Отправьте файл Голубеву Александру.<br/>
+Отправьте файл Голубеву Александру https://pmo.hse.ru/servicedesk/customer/portal/81/create/1274 (Просьба передать на EDUSD Голубеву А.А.<br/>
 <span style="color:var(--apple-accent)">💡 Рекомендация:</span> в письме указать <em>«загрузка первичной попытки»</em>.
 </div>
 </div>
