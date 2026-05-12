@@ -266,7 +266,7 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
         system_msg = webinar_system_msg
 
     response = client.chat.completions.create(
-        model="Qwen/Qwen3-Next-80B-A3B-Thinking",
+        model="qwen3-next-80b-a3b-thinking",
         messages=[
             {
                 "role": "system", 
