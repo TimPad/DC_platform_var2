@@ -266,7 +266,7 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
         system_msg = webinar_system_msg
 
     response = client.chat.completions.create(
-        model="qwen3-next-80b-a3b-thinking",
+        model="deepseek-ai/DeepSeek-V3.2-fast",
         messages=[
             {
                 "role": "system", 
