@@ -120,7 +120,13 @@ def get_new_records_from_dataframe(new_df: pd.DataFrame) -> pd.DataFrame:
         
         merge_cols = [constants.COL_EMAIL, constants.COL_DISCIPLINE]
         if all(col in existing_df.columns for col in merge_cols) and all(col in new_df.columns for col in merge_cols):
-            merged = new_df.merge(existing_df[merge_cols], on=merge_cols, how='left', indicator=True)
+            # Нормализуем existing_df перед сравнением, чтобы совпадение работало
+            # корректно (разный регистр, пробелы и т.п. не должны мешать)
+            existing_normalized = existing_df[merge_cols].copy()
+            existing_normalized = clean_email_column(existing_normalized, constants.COL_EMAIL)
+            existing_normalized = clean_string_column(existing_normalized, constants.COL_DISCIPLINE)
+            existing_normalized = existing_normalized.drop_duplicates(subset=merge_cols)
+            merged = new_df.merge(existing_normalized, on=merge_cols, how='left', indicator=True)
             return merged[merged['_merge'] == 'left_only'].drop('_merge', axis=1)
         return new_df
     except Exception as e:
