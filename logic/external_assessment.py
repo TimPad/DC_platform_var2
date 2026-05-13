@@ -94,17 +94,36 @@ def load_registration_data_from_supabase() -> pd.DataFrame:
 
 def save_to_supabase(df: pd.DataFrame) -> Tuple[bool, str]:
     """Сохранение данных в таблицу peresdachi в Supabase с использованием insert"""
+    # Список колонок, которые реально существуют в таблице peresdachi
+    PERESDACHI_COLUMNS = {
+        constants.COL_FIO,
+        constants.COL_EMAIL,
+        constants.COL_CAMPUS,
+        constants.COL_FACULTY,
+        constants.COL_PROGRAM,
+        constants.COL_GROUP,
+        constants.COL_COURSE,
+        constants.COL_ID_DISCIPLINE,
+        constants.COL_DISCIPLINE,
+        constants.COL_PERIOD,
+        constants.COL_GRADE,
+        constants.COL_CANCEL,
+    }
     try:
         supabase = get_supabase_client()
         if df.empty:
             return False, "Нет данных для сохранения."
 
+        # Оставляем только колонки, присутствующие и в датафрейме, и в схеме таблицы
+        cols_to_save = [c for c in df.columns if c in PERESDACHI_COLUMNS]
+        df_to_save = df[cols_to_save]
+
         cleaned_records = []
-        for record in df.to_dict('records'):
+        for record in df_to_save.to_dict('records'):
             cleaned_record = {k: (v if pd.notna(v) else None) for k, v in record.items()}
             cleaned_records.append(cleaned_record)
 
-        response = supabase.table(constants.DB_TABLE_PERESDACHI).insert(cleaned_records).execute()
+        supabase.table(constants.DB_TABLE_PERESDACHI).insert(cleaned_records).execute()
         return True, "Данные успешно сохранены."
     except Exception as e:
         if "duplicate key value violates unique constraint" in str(e):

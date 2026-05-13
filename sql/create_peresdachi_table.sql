@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS peresdachi (
     "Наименование дисциплины" TEXT,
     "Период аттестации" TEXT,
     "Оценка" TEXT,
+    "Отмена" TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
