@@ -87,7 +87,7 @@ HTML_EXAMPLE = f"""<div style="
   </div>
 </div>"""
 
-# Шаблон для рассылок ФКС ВШЭ
+# Шаблон для рассылок ФКН ВШЭ
 FCS_TEMPLATE = """<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" lang="ru">
 <head>
@@ -251,7 +251,7 @@ TEMPLATES = {
     },
     "fcs": {
         "name": "ФКН",
-        "description": "Официальный email-шаблон в фирменном стиле ФКС ВШЭ: тёмно-синий хедер, структурированные блоки, блоки предупреждений и CTA-кнопка.",
+        "description": "Официальный email-шаблон в фирменном стиле ФКН ВШЭ: тёмно-синий хедер, структурированные блоки, блоки предупреждений и CTA-кнопка.",
         "icon": "",
         "html": FCS_TEMPLATE.replace("{fkn_logo_url}", LOGO_URL_FCS),
         "color": "#102D69",
