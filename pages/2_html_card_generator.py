@@ -73,7 +73,7 @@ def _build_png_component(cover_html: str) -> str:
     import json as _json
     escaped = _json.dumps(cover_html)
     return """
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js"></script>
     <div style="text-align:center;">
         <button id="png-btn" onclick="downloadPNG()" style="
             background-color: #4CAF50;
@@ -95,6 +95,7 @@ def _build_png_component(cover_html: str) -> str:
         top: 0;
         width: 800px;
         z-index: -1;
+        background: transparent;
     "></div>
     <script>
     function downloadPNG() {
@@ -103,55 +104,51 @@ def _build_png_component(cover_html: str) -> str:
         btn.disabled = true;
         var container = document.getElementById('offscreen-render');
         var coverHTML = %s;
-        // Extract only the inner body content and styles
         var parser = new DOMParser();
         var doc = parser.parseFromString(coverHTML, 'text/html');
-        // Copy styles
         container.innerHTML = '';
+        // Inject styles, scoped to this container
         var styles = doc.querySelectorAll('style');
         styles.forEach(function(s) {
             var clone = document.createElement('style');
             clone.textContent = s.textContent;
             container.appendChild(clone);
         });
-        // Copy body content
-        var bodyContent = doc.body.innerHTML;
+        // Inject body content
         var wrapper = document.createElement('div');
-        wrapper.innerHTML = bodyContent;
+        wrapper.innerHTML = doc.body.innerHTML;
         container.appendChild(wrapper);
-        // Wait for images to load
-        var images = container.querySelectorAll('img');
-        var promises = Array.from(images).map(function(img) {
-            if (img.complete) return Promise.resolve();
-            return new Promise(function(resolve) {
-                img.onload = resolve;
-                img.onerror = resolve;
+        var target = container.querySelector('.course-cover') || wrapper;
+        // Force fixed width for consistent rendering
+        var targetWidth = 1600;
+        var rect = target.getBoundingClientRect();
+        var aspectRatio = rect.height / rect.width;
+        var targetHeight = Math.round(targetWidth * aspectRatio);
+        // Wait a tick for layout
+        setTimeout(function() {
+            htmlToImage.toPng(target, {
+                pixelRatio: 2,
+                cacheBust: true,
+                width: rect.width,
+                height: rect.height,
+                style: {
+                    transform: 'none'
+                }
+            }).then(function(dataUrl) {
+                var link = document.createElement('a');
+                link.download = 'cover.png';
+                link.href = dataUrl;
+                link.click();
+                btn.textContent = 'Скачать PNG';
+                btn.disabled = false;
+                container.innerHTML = '';
+            }).catch(function(err) {
+                console.error(err);
+                alert('Ошибка: ' + err);
+                btn.textContent = 'Скачать PNG';
+                btn.disabled = false;
             });
-        });
-        Promise.all(promises).then(function() {
-            var target = container.querySelector('.course-cover') || wrapper;
-            return html2canvas(target, {
-                scale: 2,
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: null,
-                logging: false,
-                width: target.offsetWidth,
-                height: target.offsetHeight
-            });
-        }).then(function(canvas) {
-            var link = document.createElement('a');
-            link.download = 'cover.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            btn.textContent = 'Скачать PNG';
-            btn.disabled = false;
-            container.innerHTML = '';
-        }).catch(function(err) {
-            alert('Ошибка: ' + err);
-            btn.textContent = 'Скачать PNG';
-            btn.disabled = false;
-        });
+        }, 100);
     }
     </script>
     """ % escaped
