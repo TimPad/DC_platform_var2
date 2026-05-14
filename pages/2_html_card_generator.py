@@ -8,7 +8,7 @@ import json
 import html
 import streamlit.components.v1 as components
 from utils import icon, get_nebius_client
-from constants import LOGO_URL, LOGO_URL_BLACK, LOGO_URL_PNG, HTML_EXAMPLE, SYSTEM_MESSAGE, TEMPLATES, WEBINAR_TEMPLATE
+from constants import LOGO_URL, LOGO_URL_BLACK, LOGO_URL_PNG, HTML_EXAMPLE, SYSTEM_MESSAGE, TEMPLATES, WEBINAR_TEMPLATE, LOGO_URL_FCS
 
 # Заголовок страницы
 st.markdown(
