@@ -6,6 +6,7 @@ AI-генерация рассылок в фирменном стиле ВШЭ
 import streamlit as st
 import json
 import html
+from datetime import datetime
 import streamlit.components.v1 as components
 from utils import icon, get_nebius_client
 from constants import LOGO_URL, LOGO_URL_BLACK, LOGO_URL_PNG, HTML_EXAMPLE, SYSTEM_MESSAGE, TEMPLATES, FCS_TEMPLATE, LOGO_URL_FCS
@@ -246,6 +247,7 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
         )
     
     # Специальная логика для шаблона ФКС
+    current_year = datetime.now().year
     if template_key == "fcs":
         fcs_system_msg = (
             "Вы — эксперт по оформлению email-рассылок в фирменном стиле ФКС НИУ ВШЭ. "
@@ -259,6 +261,7 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
             "5. Используйте ТОЛЬКО табличную верстку (table, tr, td) и inline стили как в шаблоне.\n"
             "6. Акцентные цвета: #DCFF05 (лайм) и #DFC7F2 (лаванда) — как в шаблоне.\n"
             "7. НЕ добавляйте лишних комментариев — только HTML-код.\n"
+            f"8. ТЕКУЩИЙ ГОД: {current_year}. Если в футере используется год (например, © год), ОБЯЗАТЕЛЬНО указывайте {current_year}. НЕ используйте 2024 или любой другой устаревший год.\n"
             f"{text_instruction}\n"
             "Верните ТОЛЬКО корректный JSON в формате: {\"type\": \"HTML\", \"content\": \"<!DOCTYPE html>...\"}.\n\n"
             "ШАБЛОН:\n"
