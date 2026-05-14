@@ -8,7 +8,7 @@ import json
 import html
 import streamlit.components.v1 as components
 from utils import icon, get_nebius_client
-from constants import LOGO_URL, LOGO_URL_BLACK, LOGO_URL_PNG, HTML_EXAMPLE, SYSTEM_MESSAGE, TEMPLATES, WEBINAR_TEMPLATE, LOGO_URL_FCS
+from constants import LOGO_URL, LOGO_URL_BLACK, LOGO_URL_PNG, HTML_EXAMPLE, SYSTEM_MESSAGE, TEMPLATES, FCS_TEMPLATE, LOGO_URL_FCS
 
 # Заголовок страницы
 st.markdown(
@@ -245,25 +245,26 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
             + str({"type": "HTML", "content": current_html_example})
         )
     
-    # Специальная логика для шаблона вебинаров
-    if template_key == "webinars":
-        webinar_system_msg = (
-            "Вы — эксперт по оформлению email-рассылок для анонсов вебинаров НИУ ВШЭ. "
-            "Ваша задача — преобразовать входной текст с информацией о вебинарах в HTML-рассылку. "
+    # Специальная логика для шаблона ФКС
+    if template_key == "fcs":
+        fcs_system_msg = (
+            "Вы — эксперт по оформлению email-рассылок в фирменном стиле ФКС НИУ ВШЭ. "
+            "Ваша задача — преобразовать входной текст в HTML-рассылку. "
             "ИСПОЛЬЗУЙТЕ ТОЧНУЮ СТРУКТУРУ из приведённого ниже шаблона!\n\n"
             "ТРЕБОВАНИЯ:\n"
-            "1. СОХРАНЯЙТЕ структуру шаблона: header → content → events-grid → past-webinars → feedback → footer.\n"
-            "2. Каждый вебинар оформляйте как отдельную карточку (.card) внутри .events-grid.\n"
-            "3. В каждой карточке должны быть: метка 'Онлайн', дата/время, название, описание, кнопка регистрации.\n"
-            "4. Если в тексте указаны прошедшие вебинары или записи — добавьте их в секцию .past-webinars.\n"
-            "5. Заголовок и подзаголовок в header адаптируйте под контент пользователя.\n"
-            "6. НЕ добавляйте лишних комментариев — только HTML-код.\n"
+            "1. СОХРАНЯЙТЕ структуру шаблона: header (тёмно-синий #102D69 с логотипом) → content (блоки информации, список, алерты) → CTA кнопка → footer.\n"
+            "2. Логотип ФКС: используйте ссылку " + LOGO_URL_FCS + "\n"
+            "3. Заголовок и подзаголовок в header адаптируйте под контент пользователя.\n"
+            "4. Основной контент размещайте в блоках: primary_content, list с пунктами, warning и critical алерты.\n"
+            "5. Используйте ТОЛЬКО табличную верстку (table, tr, td) и inline стили как в шаблоне.\n"
+            "6. Акцентные цвета: #DCFF05 (лайм) и #DFC7F2 (лаванда) — как в шаблоне.\n"
+            "7. НЕ добавляйте лишних комментариев — только HTML-код.\n"
             f"{text_instruction}\n"
             "Верните ТОЛЬКО корректный JSON в формате: {\"type\": \"HTML\", \"content\": \"<!DOCTYPE html>...\"}.\n\n"
             "ШАБЛОН:\n"
             + str({"type": "HTML", "content": current_html_example})
         )
-        system_msg = webinar_system_msg
+        system_msg = fcs_system_msg
 
     response = client.chat.completions.create(
         model="deepseek-ai/DeepSeek-V3.2-fast",
