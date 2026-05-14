@@ -213,6 +213,9 @@ def generate_hse_html(client, user_text: str, accent_color: str, allow_text_edit
     # Специальная логика для шаблона ФКС
     current_year = datetime.now().year
     if template_key == "fcs":
+        # Заменяем ширину в шаблоне ФКС, чтобы модель видела правильный размер
+        current_html_example = current_html_example.replace('width="600"', f'width="{table_width}"')
+        current_html_example = current_html_example.replace('max-width: 600px;', f'max-width: {width_css};')
         fcs_system_msg = (
             "Вы — эксперт по оформлению email-рассылок в фирменном стиле ФКС НИУ ВШЭ. "
             "Ваша задача — преобразовать входной текст в HTML-рассылку. "
