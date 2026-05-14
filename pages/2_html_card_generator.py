@@ -6,10 +6,67 @@ AI-генерация рассылок в фирменном стиле ВШЭ
 import streamlit as st
 import json
 import html
+import base64
 from datetime import datetime
 import streamlit.components.v1 as components
 from utils import icon, get_nebius_client
-from constants import LOGO_URL, LOGO_URL_BLACK, LOGO_URL_PNG, HTML_EXAMPLE, SYSTEM_MESSAGE, TEMPLATES, FCS_TEMPLATE, LOGO_URL_FCS
+from constants import (
+    LOGO_URL, LOGO_URL_BLACK, LOGO_URL_PNG, HTML_EXAMPLE, SYSTEM_MESSAGE,
+    TEMPLATES, FCS_TEMPLATE, LOGO_URL_FCS,
+    COVER_BRAND_COLORS, COVER_GRADIENT_ENDS, COVER_LOGOS,
+    COVER_HTML_TEMPLATE, COVER_SYSTEM_MESSAGE,
+)
+
+
+def render_cover_logos(selected_keys: list) -> str:
+    imgs = []
+    for key in selected_keys:
+        logo = COVER_LOGOS[key]
+        svg_b64 = base64.b64encode(logo["svg"].encode("utf-8")).decode("utf-8")
+        data_uri = f"data:image/svg+xml;base64,{svg_b64}"
+        h = logo["height"]
+        imgs.append(
+            f'<div class="logo-wrapper">'
+            f'<img src="{data_uri}" alt="{logo["name"]}" class="logo" '
+            f'style="height: {h}px; width: auto;" />'
+            f'</div>'
+        )
+    return "\n      ".join(imgs)
+
+
+def cover_text_color(bg_hex: str) -> str:
+    light_colors = {"#DFC7F2", "#DCFF05", "#FFFFFF"}
+    return "#102D69" if bg_hex.upper() in light_colors else "#FFFFFF"
+
+
+def cover_accent_colors(bg_hex: str) -> dict:
+    if bg_hex.upper() in ("#DFC7F2", "#FFFFFF"):
+        return {
+            "accent_stripe": "linear-gradient(90deg, #102D69 0%, #DCFF05 100%)",
+            "marker_color": "#102D69",
+            "marker_shadow": "rgba(16, 45, 105, 0.2)",
+            "badge_bg": "rgba(16, 45, 105, 0.15)",
+            "badge_text_color": "#102D69",
+            "badge_border": "rgba(16, 45, 105, 0.3)",
+        }
+    elif bg_hex.upper() == "#DCFF05":
+        return {
+            "accent_stripe": "linear-gradient(90deg, #102D69 0%, #DFC7F2 100%)",
+            "marker_color": "#102D69",
+            "marker_shadow": "rgba(16, 45, 105, 0.2)",
+            "badge_bg": "rgba(16, 45, 105, 0.15)",
+            "badge_text_color": "#102D69",
+            "badge_border": "rgba(16, 45, 105, 0.3)",
+        }
+    else:
+        return {
+            "accent_stripe": "linear-gradient(90deg, #DCFF05 0%, #DFC7F2 100%)",
+            "marker_color": "#DCFF05",
+            "marker_shadow": "rgba(220, 255, 5, 0.2)",
+            "badge_bg": "rgba(220, 255, 5, 0.15)",
+            "badge_text_color": "#DCFF05",
+            "badge_border": "rgba(220, 255, 5, 0.3)",
+        }
 
 # Заголовок страницы
 st.markdown(
@@ -25,6 +82,9 @@ st.markdown("""
 2. Нажмите кнопку генерации
 3. Получите готовый HTML-код и предпросмотр
 """)
+
+tab_cards, tab_covers = st.tabs(["📧 Карточки", "🖼 Обложки"])
+
 
 def generate_hse_html(client, user_text: str, accent_color: str, allow_text_edits: bool, width_css: str, tone: str, template_key: str = "data_culture") -> str:
     """
@@ -287,270 +347,452 @@ def generate_hse_html(client, user_text: str, accent_color: str, allow_text_edit
 
     return content.strip()
 
-# Проверка наличия API ключа выполняется внутри get_nebius_client() при вызове
-# Но для UI можем проверить наличие в env или secrets, чтобы предупредить юзера заранее, 
-# хотя это не строго обязательно, так как get_nebius_client упадет с понятной ошибкой.
-# Оставим упрощенную проверку или уберем блокировку, полагаясь на try/except при генерации.
+with tab_cards:
+    # Инициализация выбранного шаблона в session_state
+    if 'selected_template' not in st.session_state:
+        st.session_state['selected_template'] = 'data_culture'
 
-# Убираем блокирующий код, так как ключ теперь может быть в os.environ
-pass
+    @st.dialog("Предпросмотр макета", width="large")
+    def show_template_preview(template_key):
+        template_data = TEMPLATES[template_key]
+        st.markdown(f"### {template_data['name']}")
+        st.info(template_data['description'])
+        safe_html = html.escape(template_data["html"], quote=True)
+        components.html(
+            f"""
+            <div style="
+                width: 100%;
+                height: 600px;
+                overflow: auto;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                background: white;
+                padding: 0;
+                box-sizing: border-box;
+            ">
+                <iframe
+                    srcdoc="{safe_html}"
+                    style="width: 100%; height: 100%; border: none; display: block;"
+                    sandbox="allow-same-origin"
+                ></iframe>
+            </div>
+            """,
+            height=620
+        )
+        if st.button("Использовать этот макет", type="primary", use_container_width=True):
+            st.session_state['selected_template'] = template_key
+            st.rerun()
 
-# =============================================================================
-# ВЫБОР ШАБЛОНА
-# =============================================================================
+    st.markdown("### 🎨 Выберите макет")
 
-st.markdown("### 🎨 Выберите макет")
+    st.markdown("""
+    <style>
+        .template-card-header {
+            height: 70px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .template-card-desc {
+            height: 80px;
+            font-size: 0.9rem;
+            color: #6b7280;
+            overflow: hidden;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
-# Инициализация выбранного шаблона в session_state
-if 'selected_template' not in st.session_state:
-    st.session_state['selected_template'] = 'data_culture'
+    template_cols = st.columns(len(TEMPLATES))
 
-@st.dialog("Предпросмотр макета", width="large")
-def show_template_preview(template_key):
-    template_data = TEMPLATES[template_key]
-    st.markdown(f"### {template_data['name']}")
-    st.info(template_data['description'])
-    
-    # Экранируем HTML и оборачиваем в iframe
-    safe_html = html.escape(template_data["html"], quote=True)
-    components.html(
-        f"""
-        <div style="
-            width: 100%;
-            height: 600px;
-            overflow: auto;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            background: white;
-            padding: 0;
-            box-sizing: border-box;
-        ">
-            <iframe 
-                srcdoc="{safe_html}" 
-                style="width: 100%; height: 100%; border: none; display: block;"
-                sandbox="allow-same-origin"
-            ></iframe>
-        </div>
-        """,
-        height=620
+    for idx, (template_key, template_data) in enumerate(TEMPLATES.items()):
+        with template_cols[idx]:
+            is_selected = st.session_state['selected_template'] == template_key
+            with st.container(border=True):
+                st.markdown(f"<div class='template-card-header'><h4>{template_data['name']}</h4></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='template-card-desc'>{template_data['description']}</div>", unsafe_allow_html=True)
+                col_btn_1, col_btn_2 = st.columns([2, 1])
+                with col_btn_1:
+                    if st.button(
+                        "Выбрать" if not is_selected else "Выбрано",
+                        key=f"sel_{template_key}",
+                        type="primary" if is_selected else "secondary",
+                        use_container_width=True,
+                        disabled=is_selected
+                    ):
+                        st.session_state['selected_template'] = template_key
+                        st.rerun()
+                with col_btn_2:
+                    if st.button("Превью", key=f"prev_{template_key}", help="Предпросмотр макета", use_container_width=True):
+                        show_template_preview(template_key)
+
+    st.divider()
+
+    # Настройки генерации
+    col_settings_1, col_settings_2 = st.columns(2)
+
+    with col_settings_1:
+        allow_text_edits = st.checkbox(
+            "Разрешить ИИ редактировать текст",
+            value=True,
+            help="Если включено, ИИ может улучшать формулировки и структуру. Если выключено, текст будет вставлен 'как есть'."
+        )
+        tone_option = st.selectbox(
+            "Тональность текста",
+            ["Неформальная", "Строгая", "Академическая"],
+            help="Влияет на лексику и стиль изложения (работает, если разрешено редактирование текста)."
+        )
+
+    with col_settings_2:
+        if st.session_state['selected_template'] == 'data_culture':
+            accent_color = st.selectbox(
+                "Акцентный цвет",
+                ["#001A57", "#DFFF00"],
+                format_func=lambda x: "🔵 Классический синий" if x == "#001A57" else "🟢 Лайм (#DFFF00)",
+                help="Основной цвет заголовков и элементов дизайна"
+            )
+        else:
+            accent_color = "#001A57"
+
+        st.write("Ширина карточки")
+        is_full_width = st.toggle("На всю ширину (100%)", value=False)
+        if is_full_width:
+            width_css = "100%"
+        else:
+            width_val = st.slider("Ширина (px)", min_value=600, max_value=1200, value=800, step=50, label_visibility="collapsed")
+            width_css = f"{width_val}px"
+
+    user_text = st.text_area(
+        "Введите текст объявления:",
+        height=250,
+        placeholder="Вставьте сюда текст письма или новости..."
     )
-    if st.button("Использовать этот макет", type="primary", use_container_width=True):
-        st.session_state['selected_template'] = template_key
-        st.rerun()
 
-# Стили для выравнивания высоты карточек
-st.markdown("""
-<style>
-    .template-card-header {
-        height: 70px;
-        display: flex;
-        align-items: center;
-        margin-bottom: 10px;
-    }
-    .template-card-desc {
-        height: 80px;
-        font-size: 0.9rem;
-        color: #6b7280;
-        overflow: hidden;
-        margin-bottom: 20px;
-        line-height: 1.5;
-    }
-</style>
-""", unsafe_allow_html=True)
+    if st.button("Сформировать HTML", type="primary"):
+        if not user_text.strip():
+            st.warning("Введите текст для генерации")
+        else:
+            with st.spinner("Генерация карточки..."):
+                try:
+                    client = get_nebius_client()
+                    html_code = generate_hse_html(client, user_text, accent_color, allow_text_edits, width_css, tone_option, st.session_state['selected_template'])
+                    st.session_state['generated_html'] = html_code
+                    st.success("Карточка успешно создана!")
+                except Exception as e:
+                    st.error(f"Ошибка: {e}")
 
-# Отрисовка компактных карточек выбора
-template_cols = st.columns(len(TEMPLATES))
+    if 'generated_html' in st.session_state:
+        html_code = st.session_state['generated_html']
+        col1, col2 = st.columns([1, 1])
 
-for idx, (template_key, template_data) in enumerate(TEMPLATES.items()):
-    with template_cols[idx]:
-        is_selected = st.session_state['selected_template'] == template_key
-        
-        # Создаем визуальную карточку через st.container с border
-        with st.container(border=True):
-            # Заголовок с фиксированный высотой для выравнивания
-            st.markdown(f"<div class='template-card-header'><h4>{template_data['name']}</h4></div>", unsafe_allow_html=True)
-            
-            # Описание с фиксированный высотой
-            st.markdown(f"<div class='template-card-desc'>{template_data['description']}</div>", unsafe_allow_html=True)
-            
-            col_btn_1, col_btn_2 = st.columns([2, 1])
-            with col_btn_1:
-                if st.button(
-                    "Выбрать" if not is_selected else "Выбрано", 
-                    key=f"sel_{template_key}",
-                    type="primary" if is_selected else "secondary",
+        with col1:
+            st.subheader("HTML-код")
+            st.code(html_code, language="html")
+            btn_col1, btn_col2 = st.columns(2)
+            with btn_col1:
+                st.download_button(
+                    label="Скачать HTML",
+                    data=html_code.encode("utf-8"),
+                    file_name="hse_card.html",
+                    mime="text/html",
+                    use_container_width=True
+                )
+            with btn_col2:
+                escaped_html = html.escape(html_code)
+                components.html(
+                    f"""
+                    <style>
+                    .copy-container {{
+                        display: flex;
+                        align-items: center;
+                        height: 38px;
+                        margin-top: -8px;
+                    }}
+                    .copy-btn {{
+                        background-color: #5A9DF8;
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        padding: 0.5rem 1rem;
+                        font-size: 14px;
+                        font-weight: 500;
+                        cursor: pointer;
+                        width: 100%;
+                        transition: all 0.2s ease;
+                        height: 38px;
+                    }}
+                    .copy-btn:hover {{
+                        background-color: #4a8de0;
+                    }}
+                    </style>
+                    <div class="copy-container">
+                        <textarea id="html-content" style="position: absolute; left: -9999px;">{escaped_html}</textarea>
+                        <button class="copy-btn" onclick="
+                            var content = document.getElementById('html-content').value;
+                            navigator.clipboard.writeText(content).then(function() {{
+                                alert('HTML скопирован в буфер обмена!');
+                            }}, function(err) {{
+                                alert('Ошибка копирования: ' + err);
+                            }});
+                        ">Скопировать HTML</button>
+                    </div>
+                    """,
+                    height=38
+                )
+
+        with col2:
+            st.subheader("Предпросмотр")
+            safe_html = html.escape(html_code, quote=True)
+            preview_html = f"""
+            <div style="
+                width: 100%;
+                height: 800px;
+                overflow: auto;
+                border: 1px solid #333;
+                border-radius: 12px;
+                background: white;
+                padding: 0;
+                box-sizing: border-box;
+            ">
+                <iframe
+                    srcdoc="{safe_html}"
+                    style="width: 100%; height: 100%; border: none; display: block;"
+                    sandbox="allow-same-origin"
+                ></iframe>
+            </div>
+            """
+            components.html(preview_html, height=850, scrolling=False)
+            st.info(
+                "💡 **Совет:** Для рассылки через обычный почтовый клиент (Outlook, Apple Mail) "
+                "рекомендуется копировать верстку прямо из окна предпросмотра (выделить всё -> копировать), "
+                "а не использовать исходный HTML-код. После вставки в письмо текст можно будет отредактировать."
+            )
+
+# =============================================================================
+# ВКЛАДКА: ОБЛОЖКИ
+# =============================================================================
+
+with tab_covers:
+    st.markdown("### 🖼 Генератор обложек")
+    st.markdown("Создайте обложку для курса или мероприятия в фирменном стиле.")
+
+    cover_mode = st.radio(
+        "Режим генерации",
+        ["Шаблон", "ИИ-генерация"],
+        horizontal=True,
+        help="Шаблон — мгновенная подстановка в готовый макет. ИИ — генерация через DeepSeek."
+    )
+
+    st.markdown("#### Логотипы на обложке")
+    logo_cols = st.columns(4)
+    selected_logos = []
+    with logo_cols[0]:
+        if st.checkbox("ВШЭ", value=False, key="cover_logo_hse"):
+            selected_logos.append("hse")
+    with logo_cols[1]:
+        if st.checkbox("ФКН", value=False, key="cover_logo_fcs"):
+            selected_logos.append("fcs")
+    with logo_cols[2]:
+        if st.checkbox("Data Culture", value=False, key="cover_logo_dc"):
+            selected_logos.append("dc")
+    with logo_cols[3]:
+        st.checkbox("Яндекс", value=False, disabled=True, key="cover_logo_yandex",
+                     help="Логотип в формате PDF — будет доступен после конвертации в SVG.")
+
+    st.markdown("#### Настройки")
+    cover_col1, cover_col2 = st.columns(2)
+
+    with cover_col1:
+        color_names = list(COVER_BRAND_COLORS.keys())
+        selected_color_name = st.selectbox(
+            "Цвет фона",
+            color_names,
+            index=0,
+            key="cover_bg_color"
+        )
+        bg_color = COVER_BRAND_COLORS[selected_color_name]
+
+    with cover_col2:
+        cover_title = st.text_input(
+            "Текст заголовка (центр)",
+            placeholder="Летняя школа по анализу данных ФКН",
+            key="cover_title"
+        )
+
+    cover_col3, cover_col4 = st.columns(2)
+    with cover_col3:
+        cover_subtitle = st.text_input(
+            "Текст подзаголовка (футер)",
+            placeholder="практические занятия • эксперты из индустрии • сертификат",
+            key="cover_subtitle"
+        )
+    with cover_col4:
+        cover_badge = st.text_input(
+            "Текст бейджа",
+            placeholder="набор открыт",
+            key="cover_badge"
+        )
+
+    if st.button("Сформировать обложку", type="primary", key="generate_cover"):
+        if not cover_title.strip():
+            st.warning("Введите текст заголовка для обложки")
+        else:
+            if cover_mode == "Шаблон":
+                txt_color = cover_text_color(bg_color)
+                sub_color = txt_color if txt_color == "#102D69" else "rgba(255, 255, 255, 0.85)"
+                accents = cover_accent_colors(bg_color)
+                gradient_end = COVER_GRADIENT_ENDS.get(bg_color, bg_color)
+                logos_html = render_cover_logos(selected_logos)
+
+                cover_html = COVER_HTML_TEMPLATE.format(
+                    bg_color=bg_color,
+                    bg_gradient_end=gradient_end,
+                    logos_html=logos_html,
+                    title_text=cover_title,
+                    subtitle_text=cover_subtitle or "",
+                    badge_text=cover_badge or "",
+                    title_color=txt_color,
+                    subtitle_color=sub_color,
+                    accent_stripe=accents["accent_stripe"],
+                    marker_color=accents["marker_color"],
+                    marker_shadow=accents["marker_shadow"],
+                    badge_bg=accents["badge_bg"],
+                    badge_text_color=accents["badge_text_color"],
+                    badge_border=accents["badge_border"],
+                )
+                st.session_state['generated_cover_html'] = cover_html
+                st.success("Обложка сформирована!")
+
+            else:
+                with st.spinner("ИИ генерирует обложку..."):
+                    try:
+                        client = get_nebius_client()
+                        logos_desc = ", ".join([COVER_LOGOS[k]["name"] for k in selected_logos]) if selected_logos else "без логотипов"
+                        user_msg = (
+                            f"Создай обложку со следующими параметрами:\n"
+                            f"- Цвет фона: {bg_color}\n"
+                            f"- Логотипы: {logos_desc}\n"
+                            f"- Заголовок: {cover_title}\n"
+                            f"- Подзаголовок: {cover_subtitle}\n"
+                            f"- Бейдж: {cover_badge}\n"
+                        )
+                        if selected_logos:
+                            logos_svg_section = ""
+                            for k in selected_logos:
+                                logo = COVER_LOGOS[k]
+                                svg_b64 = base64.b64encode(logo["svg"].encode("utf-8")).decode("utf-8")
+                                logos_svg_section += f"\nЛоготип {logo['name']} (base64 data URI): data:image/svg+xml;base64,{svg_b64}\nВысота: {logo['height']}px, ширина: auto\n"
+                            user_msg += f"\nВстрой логотипы как <img src=\"data:image/svg+xml;base64,...\">:\n{logos_svg_section}"
+
+                        response = client.chat.completions.create(
+                            model="deepseek-ai/DeepSeek-V3.2-fast",
+                            messages=[
+                                {"role": "system", "content": COVER_SYSTEM_MESSAGE},
+                                {"role": "user", "content": user_msg}
+                            ],
+                            timeout=120.0
+                        )
+                        raw = response.choices[0].message.content.strip()
+                        if raw.startswith("```json"):
+                            raw = raw[7:]
+                        elif raw.startswith("```"):
+                            raw = raw[3:]
+                        if raw.endswith("```"):
+                            raw = raw[:-3]
+                        raw = raw.strip()
+
+                        parsed = json.loads(raw)
+                        if parsed.get("type") != "HTML":
+                            raise ValueError("Поле 'type' должно быть 'HTML'.")
+                        content = parsed.get("content")
+                        if not isinstance(content, str) or not content.strip():
+                            raise ValueError("Поле 'content' отсутствует или пустое.")
+
+                        st.session_state['generated_cover_html'] = content.strip()
+                        st.success("Обложка сгенерирована!")
+                    except Exception as e:
+                        st.error(f"Ошибка: {e}")
+
+    if 'generated_cover_html' in st.session_state:
+        cover_code = st.session_state['generated_cover_html']
+        cov_col1, cov_col2 = st.columns([1, 1])
+
+        with cov_col1:
+            st.subheader("HTML-код")
+            st.code(cover_code, language="html")
+            cov_btn1, cov_btn2 = st.columns(2)
+            with cov_btn1:
+                st.download_button(
+                    label="Скачать HTML",
+                    data=cover_code.encode("utf-8"),
+                    file_name="cover.html",
+                    mime="text/html",
                     use_container_width=True,
-                    disabled=is_selected
-                ):
-                    st.session_state['selected_template'] = template_key
-                    st.rerun()
-            with col_btn_2:
-                # Кнопка без эмоджи, используем текст или иконку из utils если нужно
-                if st.button("Превью", key=f"prev_{template_key}", help="Предпросмотр макета", use_container_width=True):
-                    show_template_preview(template_key)
+                    key="download_cover"
+                )
+            with cov_btn2:
+                escaped_cover = html.escape(cover_code)
+                components.html(
+                    f"""
+                    <style>
+                    .copy-container {{
+                        display: flex;
+                        align-items: center;
+                        height: 38px;
+                        margin-top: -8px;
+                    }}
+                    .copy-btn {{
+                        background-color: #5A9DF8;
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        padding: 0.5rem 1rem;
+                        font-size: 14px;
+                        font-weight: 500;
+                        cursor: pointer;
+                        width: 100%;
+                        transition: all 0.2s ease;
+                        height: 38px;
+                    }}
+                    .copy-btn:hover {{
+                        background-color: #4a8de0;
+                    }}
+                    </style>
+                    <div class="copy-container">
+                        <textarea id="cover-html-content" style="position: absolute; left: -9999px;">{escaped_cover}</textarea>
+                        <button class="copy-btn" onclick="
+                            var content = document.getElementById('cover-html-content').value;
+                            navigator.clipboard.writeText(content).then(function() {{
+                                alert('HTML обложки скопирован в буфер обмена!');
+                            }}, function(err) {{
+                                alert('Ошибка копирования: ' + err);
+                            }});
+                        ">Скопировать HTML</button>
+                    </div>
+                    """,
+                    height=38
+                )
 
-st.divider()
-
-# =============================================================================
-# НАСТРОЙКИ ГЕНЕРАЦИИ
-# =============================================================================
-
-col_settings_1, col_settings_2 = st.columns(2)
-
-with col_settings_1:
-    allow_text_edits = st.checkbox(
-        "Разрешить ИИ редактировать текст",
-        value=True,
-        help="Если включено, ИИ может улучшать формулировки и структуру. Если выключено, текст будет вставлен 'как есть'."
-    )
-    
-    tone_option = st.selectbox(
-        "Тональность текста",
-        ["Неформальная", "Строгая", "Академическая"],
-        help="Влияет на лексику и стиль изложения (работает, если разрешено редактирование текста)."
-    )
-
-with col_settings_2:
-    # Выбор цвета доступен только для шаблона Data Culture
-    if st.session_state['selected_template'] == 'data_culture':
-        accent_color = st.selectbox(
-            "Акцентный цвет",
-            ["#001A57", "#DFFF00"],
-            format_func=lambda x: "🔵 Классический синий" if x == "#001A57" else "🟢 Лайм (#DFFF00)",
-            help="Основной цвет заголовков и элементов дизайна"
-        )
-    else:
-        accent_color = "#001A57"  # ФКН использует собственные фиксированные цвета
-    
-    st.write("Ширина карточки")
-    is_full_width = st.toggle("На всю ширину (100%)", value=False)
-    
-    if is_full_width:
-        width_css = "100%"
-    else:
-        width_val = st.slider("Ширина (px)", min_value=600, max_value=1200, value=800, step=50, label_visibility="collapsed")
-        width_css = f"{width_val}px"
-
-user_text = st.text_area(
-    "Введите текст объявления:",
-    height=250,
-    placeholder="Вставьте сюда текст письма или новости..."
-)
-
-if st.button("Сформировать HTML", type="primary"):
-    if not user_text.strip():
-        st.warning("Введите текст для генерации")
-    else:
-        with st.spinner("Генерация карточки..."):
-            try:
-                client = get_nebius_client()
-                html_code = generate_hse_html(client, user_text, accent_color, allow_text_edits, width_css, tone_option, st.session_state['selected_template'])
-                # Сохраняем в session_state чтобы не потерять при обновлении
-                st.session_state['generated_html'] = html_code
-                st.success("Карточка успешно создана!")
-            except Exception as e:
-                st.error(f"Ошибка: {e}")
-
-# Отображение результата, если HTML уже сгенерирован
-if 'generated_html' in st.session_state:
-    html_code = st.session_state['generated_html']
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.subheader("HTML-код")
-        st.code(html_code, language="html")
-        
-        # Кнопки скачивания и копирования
-        btn_col1, btn_col2 = st.columns(2)
-        
-        with btn_col1:
-            st.download_button(
-                label="Скачать HTML",
-                data=html_code.encode("utf-8"),
-                file_name="hse_card.html",
-                mime="text/html",
-                use_container_width=True
-            )
-        
-        with btn_col2:
-            # Кнопка копирования с выравниванием
-            escaped_html = html.escape(html_code)
-            
-            components.html(
-                f"""
-                <style>
-                .copy-container {{
-                    display: flex;
-                    align-items: center;
-                    height: 38px;
-                    margin-top: -8px;
-                }}
-                .copy-btn {{
-                    background-color: #5A9DF8;
-                    color: white;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 0.5rem 1rem;
-                    font-size: 14px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    width: 100%;
-                    transition: all 0.2s ease;
-                    height: 38px;
-                }}
-                .copy-btn:hover {{
-                    background-color: #4a8de0;
-                }}
-                </style>
-                <div class="copy-container">
-                    <textarea id="html-content" style="position: absolute; left: -9999px;">{escaped_html}</textarea>
-                    <button class="copy-btn" onclick="
-                        var content = document.getElementById('html-content').value;
-                        navigator.clipboard.writeText(content).then(function() {{
-                            alert('HTML скопирован в буфер обмена!');
-                        }}, function(err) {{
-                            alert('Ошибка копирования: ' + err);
-                        }});
-                    ">Скопировать HTML</button>
-                </div>
-                """,
-                height=38
-            )
-    
-    with col2:
-        st.subheader("Предпросмотр")
-
-        # Экранируем HTML и оборачиваем в scrollable div
-        safe_html = html.escape(html_code, quote=True)
-        preview_html = f"""
-        <div style="
-            width: 100%;
-            height: 800px;
-            overflow: auto;
-            border: 1px solid #333;
-            border-radius: 12px;
-            background: white;
-            padding: 0;
-            box-sizing: border-box;
-        ">
-            <iframe 
-                srcdoc="{safe_html}" 
-                style="
-                    width: 100%;
-                    height: 100%;
-                    border: none;
-                    display: block;
-                "
-                sandbox="allow-same-origin"
-            ></iframe>
-        </div>
-        """
-
-        components.html(preview_html, height=850, scrolling=False)
-        
-        st.info(
-            "💡 **Совет:** Для рассылки через обычный почтовый клиент (Outlook, Apple Mail) "
-            "рекомендуется копировать верстку прямо из окна предпросмотра (выделить всё -> копировать), "
-            "а не использовать исходный HTML-код. После вставки в письмо текст можно будет отредактировать."
-        )
+        with cov_col2:
+            st.subheader("Предпросмотр")
+            safe_cover = html.escape(cover_code, quote=True)
+            cover_preview = f"""
+            <div style="
+                width: 100%;
+                height: 500px;
+                overflow: auto;
+                border: 1px solid #333;
+                border-radius: 12px;
+                background: white;
+                padding: 0;
+                box-sizing: border-box;
+            ">
+                <iframe
+                    srcdoc="{safe_cover}"
+                    style="width: 100%; height: 100%; border: none; display: block;"
+                    sandbox="allow-same-origin"
+                ></iframe>
+            </div>
+            """
+            components.html(cover_preview, height=520, scrolling=False)
