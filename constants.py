@@ -211,9 +211,7 @@ FCS_TEMPLATE = """<!DOCTYPE html>
                   <td style="padding: 0 8px;">
                     <a href="{link_1}" style="color: #DCFF05; text-decoration: none; font-size: 13px; font-weight: 500;">{link_1_text}</a>
                   </td>
-                  <td style="padding: 0 8px;">
-                    <a href="{link_2}" style="color: #DCFF05; text-decoration: none; font-size: 13px; font-weight: 500;">{link_2_text}</a>
-                  </td>
+            
                 </tr>
               </table>
               
