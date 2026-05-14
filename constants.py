@@ -470,16 +470,13 @@ COVER_HTML_TEMPLATE = '''<!DOCTYPE html>
       position: absolute;
       top: -10%;
       right: -5%;
-      width: 55%;
+      width: 45%;
       aspect-ratio: 1;
-      background: radial-gradient(circle at center,
-        rgba(223, 199, 242, 0.55) 0%,
-        rgba(223, 199, 242, 0.35) 35%,
-        rgba(223, 199, 242, 0.15) 60%,
-        rgba(223, 199, 242, 0) 80%);
+      background: #DFC7F2;
       border-radius: 50%;
+      opacity: 0.35;
+      filter: blur(40px);
       z-index: 1;
-      pointer-events: none;
     }}
     .accent-stripe {{
       position: absolute;
@@ -492,14 +489,24 @@ COVER_HTML_TEMPLATE = '''<!DOCTYPE html>
     }}
     .marker-dot {{
       position: absolute;
-      top: 32px;
-      right: 32px;
+      top: 29px;
+      right: 29px;
+      width: 16px;
+      height: 16px;
+      background: {marker_shadow};
+      border-radius: 50%;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }}
+    .marker-dot::before {{
+      content: '';
       width: 10px;
       height: 10px;
       background: {marker_color};
       border-radius: 50%;
-      z-index: 3;
-      box-shadow: 0 0 0 3px {marker_shadow};
+      display: block;
     }}
     .header {{
       position: relative;
@@ -583,8 +590,12 @@ COVER_HTML_TEMPLATE = '''<!DOCTYPE html>
         font-size: 13px;
       }}
       .marker-dot {{
-        top: 20px;
-        right: 20px;
+        top: 17px;
+        right: 17px;
+        width: 14px;
+        height: 14px;
+      }}
+      .marker-dot::before {{
         width: 8px;
         height: 8px;
       }}
