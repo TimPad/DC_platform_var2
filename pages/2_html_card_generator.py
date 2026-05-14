@@ -19,19 +19,18 @@ from constants import (
 
 
 def render_cover_logos(selected_keys: list) -> str:
-    imgs = []
+    parts = []
     for key in selected_keys:
         logo = COVER_LOGOS[key]
-        svg_b64 = base64.b64encode(logo["svg"].encode("utf-8")).decode("utf-8")
-        data_uri = f"data:image/svg+xml;base64,{svg_b64}"
         h = logo["height"]
-        imgs.append(
-            f'<div class="logo-wrapper">'
-            f'<img src="{data_uri}" alt="{logo["name"]}" class="logo" '
-            f'style="height: {h}px; width: auto;" />'
-            f'</div>'
-        )
-    return "\n      ".join(imgs)
+        svg = logo["svg"].strip()
+        svg = svg.replace('width=', 'data-orig-width=', 1).replace('height=', 'data-orig-height=', 1)
+        if 'style="' in svg:
+            svg = svg.replace('style="', f'style="height:{h}px;width:auto;display:block;', 1)
+        else:
+            svg = svg.replace('<svg ', f'<svg style="height:{h}px;width:auto;display:block;" ', 1)
+        parts.append(f'<div class="logo-wrapper">{svg}</div>')
+    return "\n      ".join(parts)
 
 
 def cover_text_color(bg_hex: str) -> str:
@@ -771,9 +770,8 @@ with tab_covers:
                             logos_svg_section = ""
                             for k in selected_logos:
                                 logo = COVER_LOGOS[k]
-                                svg_b64 = base64.b64encode(logo["svg"].encode("utf-8")).decode("utf-8")
-                                logos_svg_section += f"\nЛоготип {logo['name']} (base64 data URI): data:image/svg+xml;base64,{svg_b64}\nВысота: {logo['height']}px, ширина: auto\n"
-                            user_msg += f"\nВстрой логотипы как <img src=\"data:image/svg+xml;base64,...\">:\n{logos_svg_section}"
+                                logos_svg_section += f"\nЛоготип {logo['name']} (inline SVG):\n{logo['svg']}\nВысота: {logo['height']}px, ширина: auto\n"
+                            user_msg += f"\nВстрой логотипы как inline SVG (НЕ img, а прямо <svg> тег) с style=\"height:Npx;width:auto;display:block;\":\n{logos_svg_section}"
 
                         response = client.chat.completions.create(
                             model="deepseek-ai/DeepSeek-V3.2-fast",
