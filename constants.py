@@ -470,13 +470,16 @@ COVER_HTML_TEMPLATE = '''<!DOCTYPE html>
       position: absolute;
       top: -10%;
       right: -5%;
-      width: 45%;
+      width: 55%;
       aspect-ratio: 1;
-      background: #DFC7F2;
+      background: radial-gradient(circle at center,
+        rgba(223, 199, 242, 0.55) 0%,
+        rgba(223, 199, 242, 0.35) 35%,
+        rgba(223, 199, 242, 0.15) 60%,
+        rgba(223, 199, 242, 0) 80%);
       border-radius: 50%;
-      opacity: 0.35;
-      filter: blur(40px);
       z-index: 1;
+      pointer-events: none;
     }}
     .accent-stripe {{
       position: absolute;
@@ -515,8 +518,7 @@ COVER_HTML_TEMPLATE = '''<!DOCTYPE html>
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid rgba(255, 255, 255, 0.6);
-      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.8);
     }}
     .logo {{
       display: block;
