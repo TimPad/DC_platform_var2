@@ -26,14 +26,13 @@ st.markdown("""
 3. Получите готовый HTML-код и предпросмотр
 """)
 
-def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str, allow_text_edits: bool, width_css: str, tone: str, template_key: str = "data_culture") -> str:
+def generate_hse_html(client, user_text: str, accent_color: str, allow_text_edits: bool, width_css: str, tone: str, template_key: str = "data_culture") -> str:
     """
     Генерация HTML-карточки через Nebius API
     
     Args:
         client: OpenAI клиент
         user_text: Текст объявления
-        style_mode: "Для сайта" или "Для почты"
         accent_color: HEX код основного цвета
         allow_text_edits: Разрешить ли ИИ менять текст пользователя
         width_css: CSS значение ширины (напр. "800px" или "100%")
@@ -98,13 +97,10 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
     else:
         color_instruction += f"Текст заголовка {header_text_color}."
 
-    # Логика для режима "Для почты" (ранее "Чистый HTML")
-    if style_mode == "Для почты":
-        # Улучшенный шаблон для писем
-        # Используем ширину из аргумента
-        table_width = width_css if width_css.endswith("%") else width_css.replace("px", "")
-        
-        pure_html_template = f"""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+    # Используем ширину из аргумента
+    table_width = width_css if width_css.endswith("%") else width_css.replace("px", "")
+    
+    pure_html_template = f"""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -197,54 +193,22 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
 </body>
 </html>"""
 
-        system_msg = (
-            "Вы — эксперт по верстке HTML-писем (Email HTML Development). "
-            "Ваша задача: Преобразовать текст в HTML-код, который идеально отображается в Outlook, Gmail и Apple Mail. "
-            "Используйте предоставленный шаблон как жесткую основу.\n\n"
-            "ШАБЛОН:\n"
-            f"{pure_html_template}\n\n"
-            "ТРЕБОВАНИЯ:\n"
-            "1. Используйте ТОЛЬКО табличную верстку (table, tr, td) как в шаблоне.\n"
-            "2. ВСЕ стили должны быть только inline (style=\"...\").\n"
-            "3. Логотип: используйте ссылку " + current_logo_url + "\n"
-            f"{color_instruction}\n"
-            "5. АЛЕРТЫ: Для предупреждений используйте ЖЕЛТЫЙ блок (bg: #FFFBEB, text: #92400E, border: #F59E0B).\n"
-            "6. АЛЕРТЫ: Для критической информации используйте КРАСНЫЙ блок (bg: #FEF2F2, text: #991B1B, border: #EF4444).\n"
-            f"{text_instruction}\n"
-            "8. Верните JSON: {\"type\": \"HTML\", \"content\": \"код...\"}."
-        )
-    else:
-        # Логика для HTML с Inline CSS (Modern)
-        # Внедряем ширину в контейнер примера
-        max_width_val = width_css
-        current_html_example = current_html_example.replace("max-width: 860px;", f"max-width: {max_width_val};")
-
-        # ВСЕГДА заменяем логотип на правильный (PNG для синего, Black для лайма)
-        current_html_example = current_html_example.replace(LOGO_URL, current_logo_url)
-
-        if accent_color.upper() != "#001A57":
-            current_html_example = current_html_example.replace("#001a57", accent_color)
-            current_html_example = current_html_example.replace("#00256c", accent_color)
-            if is_light_color:
-                # Если фон светлый, текст на нем делаем черным
-                current_html_example = current_html_example.replace("color: #ffffff;", "color: #000000;")
-        
-        system_msg = (
-            "Вы — эксперт по оформлению официальных рассылок НИУ ВШЭ. "
-            "Ваша задача — преобразовать входной текст объявления в HTML-карточку. "
-            "В шапке обязательно должен быть логотип по ссылке: " + current_logo_url + ". "
-            "Используйте структуру и CSS-стили из приведённого ниже примера. "
-            f"Ширина карточки должна быть: {max_width_val} "
-            f"{color_instruction}\n"
-            "ВАЖНО: Для предупреждений (attention) используйте ЖЕЛТЫЙ блок (background: #FFFBEB, color: #92400E, border-left: 4px solid #F59E0B).\n"
-            "ВАЖНО: Для критической информации (important/danger) используйте КРАСНЫЙ блок (background: #FEF2F2, color: #991B1B, border-left: 4px solid #EF4444).\n"
-            "Для обычной информации используйте нейтральный или зеленый блок. "
-            "Не добавляйте пояснений, комментариев или лишних тегов. "
-            f"{text_instruction}\n"
-            "Верните ТОЛЬКО корректный JSON в формате: {\"type\": \"HTML\", \"content\": \"<div>...</div>\"}.\n\n"
-            "Пример корректного вывода:\n"
-            + str({"type": "HTML", "content": current_html_example})
-        )
+    system_msg = (
+        "Вы — эксперт по верстке HTML-писем (Email HTML Development). "
+        "Ваша задача: Преобразовать текст в HTML-код, который идеально отображается в Outlook, Gmail и Apple Mail. "
+        "Используйте предоставленный шаблон как жесткую основу.\n\n"
+        "ШАБЛОН:\n"
+        f"{pure_html_template}\n\n"
+        "ТРЕБОВАНИЯ:\n"
+        "1. Используйте ТОЛЬКО табличную верстку (table, tr, td) как в шаблоне.\n"
+        "2. ВСЕ стили должны быть только inline (style=\"...\").\n"
+        "3. Логотип: используйте ссылку " + current_logo_url + "\n"
+        f"{color_instruction}\n"
+        "5. АЛЕРТЫ: Для предупреждений используйте ЖЕЛТЫЙ блок (bg: #FFFBEB, text: #92400E, border: #F59E0B).\n"
+        "6. АЛЕРТЫ: Для критической информации используйте КРАСНЫЙ блок (bg: #FEF2F2, text: #991B1B, border: #EF4444).\n"
+        f"{text_instruction}\n"
+        "8. Верните JSON: {\"type\": \"HTML\", \"content\": \"код...\"}."
+    )
     
     # Специальная логика для шаблона ФКС
     current_year = datetime.now().year
@@ -262,6 +226,7 @@ def generate_hse_html(client, user_text: str, style_mode: str, accent_color: str
             "6. Акцентные цвета: #DCFF05 (лайм) и #DFC7F2 (лаванда) — как в шаблоне.\n"
             "7. НЕ добавляйте лишних комментариев — только HTML-код.\n"
             f"8. ТЕКУЩИЙ ГОД: {current_year}. Если в футере используется год (например, © год), ОБЯЗАТЕЛЬНО указывайте {current_year}. НЕ используйте 2024 или любой другой устаревший год.\n"
+            f"9. Ширина карточки: {width_css}. Используйте width=\"{table_width}\" и max-width: {width_css} для основного контейнера.\n"
             f"{text_instruction}\n"
             "Верните ТОЛЬКО корректный JSON в формате: {\"type\": \"HTML\", \"content\": \"<!DOCTYPE html>...\"}.\n\n"
             "ШАБЛОН:\n"
@@ -430,12 +395,6 @@ st.divider()
 col_settings_1, col_settings_2 = st.columns(2)
 
 with col_settings_1:
-    style_mode = st.radio(
-        "Режим верстки",
-        ["Для сайта", "Для почты"],
-        help="Выберите 'Для почты' для создания Email-safe верстки (таблицы + инлайн стили), которая корректно отображается в Outlook и других почтовых клиентах."
-    )
-    
     allow_text_edits = st.checkbox(
         "Разрешить ИИ редактировать текст",
         value=True,
@@ -449,13 +408,16 @@ with col_settings_1:
     )
 
 with col_settings_2:
-    # Выбор цвета теперь доступен всегда
-    accent_color = st.selectbox(
-        "Акцентный цвет",
-        ["#001A57", "#DFFF00"],
-        format_func=lambda x: "🔵 Классический синий" if x == "#001A57" else "🟢 Лайм (#DFFF00)",
-        help="Основной цвет заголовков и элементов дизайна"
-    )
+    # Выбор цвета доступен только для шаблона Data Culture
+    if st.session_state['selected_template'] == 'data_culture':
+        accent_color = st.selectbox(
+            "Акцентный цвет",
+            ["#001A57", "#DFFF00"],
+            format_func=lambda x: "🔵 Классический синий" if x == "#001A57" else "🟢 Лайм (#DFFF00)",
+            help="Основной цвет заголовков и элементов дизайна"
+        )
+    else:
+        accent_color = "#001A57"  # ФКН использует собственные фиксированные цвета
     
     st.write("Ширина карточки")
     is_full_width = st.toggle("На всю ширину (100%)", value=False)
@@ -479,7 +441,7 @@ if st.button("Сформировать HTML", type="primary"):
         with st.spinner("Генерация карточки..."):
             try:
                 client = get_nebius_client()
-                html_code = generate_hse_html(client, user_text, style_mode, accent_color, allow_text_edits, width_css, tone_option, st.session_state['selected_template'])
+                html_code = generate_hse_html(client, user_text, accent_color, allow_text_edits, width_css, tone_option, st.session_state['selected_template'])
                 # Сохраняем в session_state чтобы не потерять при обновлении
                 st.session_state['generated_html'] = html_code
                 st.success("Карточка успешно создана!")
