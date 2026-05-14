@@ -778,6 +778,7 @@ with tab_covers:
             st.subheader("Предпросмотр")
             safe_cover = html.escape(cover_code, quote=True)
             cover_preview = f"""
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
             <div style="
                 width: 100%;
                 height: 500px;
@@ -787,12 +788,56 @@ with tab_covers:
                 background: white;
                 padding: 0;
                 box-sizing: border-box;
-            ">
+            " id="cover-preview-wrap">
                 <iframe
+                    id="cover-iframe"
                     srcdoc="{safe_cover}"
                     style="width: 100%; height: 100%; border: none; display: block;"
-                    sandbox="allow-same-origin"
+                    sandbox="allow-same-origin allow-scripts"
                 ></iframe>
             </div>
+            <div style="margin-top: 10px; text-align: center;">
+                <button id="png-btn" onclick="downloadPNG()" style="
+                    background-color: #4CAF50;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 0.5rem 1.5rem;
+                    font-size: 14px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    width: 100%;
+                    height: 38px;
+                    transition: all 0.2s ease;
+                ">Скачать PNG</button>
+            </div>
+            <script>
+            function downloadPNG() {{
+                var btn = document.getElementById('png-btn');
+                btn.textContent = 'Генерация...';
+                btn.disabled = true;
+                var iframe = document.getElementById('cover-iframe');
+                var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                var target = iframeDoc.querySelector('.course-cover') || iframeDoc.body;
+                html2canvas(target, {{
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: null,
+                    logging: false
+                }}).then(function(canvas) {{
+                    var link = document.createElement('a');
+                    link.download = 'cover.png';
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    btn.textContent = 'Скачать PNG';
+                    btn.disabled = false;
+                }}).catch(function(err) {{
+                    alert('Ошибка генерации PNG: ' + err);
+                    btn.textContent = 'Скачать PNG';
+                    btn.disabled = false;
+                }});
+            }}
+            </script>
             """
-            components.html(cover_preview, height=520, scrolling=False)
+            components.html(cover_preview, height=570, scrolling=False)

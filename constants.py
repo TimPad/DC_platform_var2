@@ -432,8 +432,8 @@ COVER_LOGO_DC_SVG = '''<svg width="348" height="229" viewBox="0 60 348 229" xmln
 
 COVER_LOGOS = {
     "hse": {"name": "ВШЭ", "svg": COVER_LOGO_HSE_SVG, "height": 40},
-    "fcs": {"name": "ФКН", "svg": COVER_LOGO_FCS_SVG, "height": 24},
-    "dc":  {"name": "Data Culture", "svg": COVER_LOGO_DC_SVG, "height": 36},
+    "fcs": {"name": "ФКН", "svg": COVER_LOGO_FCS_SVG, "height": 32},
+    "dc":  {"name": "Data Culture", "svg": COVER_LOGO_DC_SVG, "height": 32},
 }
 
 COVER_HTML_TEMPLATE = '''<!DOCTYPE html>
