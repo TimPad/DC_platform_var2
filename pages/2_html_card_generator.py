@@ -574,7 +574,8 @@ with tab_cards:
 
         with col1:
             st.subheader("HTML-код")
-            st.code(html_code, language="html")
+            with st.container(height=800):
+                st.code(html_code, language="html")
             btn_col1, btn_col2 = st.columns(2)
             with btn_col1:
                 st.download_button(
@@ -805,7 +806,8 @@ with tab_covers:
 
         with cov_col1:
             st.subheader("HTML-код")
-            st.code(cover_code, language="html")
+            with st.container(height=800):
+                st.code(cover_code, language="html")
             cov_btn1, cov_btn2 = st.columns(2)
             with cov_btn1:
                 st.download_button(
