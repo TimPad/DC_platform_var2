@@ -242,7 +242,7 @@ FCS_TEMPLATE = """<!DOCTYPE html>
 # Словарь шаблонов с метаданными для UI выбора
 TEMPLATES = {
     "data_culture": {
-        "name": "Горизонтальная сетка",
+        "name": "Data Culture",
         "description": "Классическая вертикальная верстка с широкими информационными блоками и акцентным хедером. Подходит для длинных объявлений.",
         "icon": "",
         "html": HTML_EXAMPLE,
@@ -250,7 +250,7 @@ TEMPLATES = {
         "preview_bg": "linear-gradient(135deg, #001a57 0%, #00256c 100%)"
     },
     "fcs": {
-        "name": "Смешанная сетка",
+        "name": "ФКН",
         "description": "Официальный email-шаблон в фирменном стиле ФКС ВШЭ: тёмно-синий хедер, структурированные блоки, блоки предупреждений и CTA-кнопка.",
         "icon": "",
         "html": FCS_TEMPLATE.replace("{fkn_logo_url}", LOGO_URL_FCS),
