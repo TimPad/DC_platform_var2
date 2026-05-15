@@ -556,12 +556,21 @@ COVER_HTML_TEMPLATE = '''<!DOCTYPE html>
       flex-wrap: wrap;
     }}
     .logo-wrapper {{
+      position: relative;
+      isolation: isolate;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: {logo_pad};
-      border: {logo_border};
-      border-radius: 8px;
+    }}
+    .logo-wrapper::before {{
+      content: "";
+      position: absolute;
+      inset: -14px;
+      background: {logo_glow};
+      border-radius: 50%;
+      filter: blur(18px);
+      z-index: -1;
+      pointer-events: none;
     }}
     .logo {{
       display: block;
@@ -674,7 +683,7 @@ COVER_SYSTEM_MESSAGE = (
     "- Композиция: два слоя — 1) спокойный, округлый, мягкий, 2) тёмный, острый, направленный\n"
     "- Декоративные маркеры на пересечениях осей\n\n"
     "ПРАВИЛА ЛОГОТИПОВ:\n"
-    "- Логотипы размещаются БЕЗ белой подложки, на прозрачном фоне. На тёмно-синем фоне (#102D69) к каждому логотипу добавляется тонкая белая обводка: border: 1px solid #ffffff; padding: 4px; border-radius: 8px;. На светлых фонах (#DFC7F2, #DCFF05, #FFFFFF) обводка не нужна.\n"
+    "- Логотипы размещаются БЕЗ белой подложки, на прозрачном фоне. На тёмно-синем фоне (#102D69) под каждым логотипом располагается мягкое размытое белое сияние через CSS ::before (background: rgba(255,255,255,0.55); filter: blur(18px); border-radius: 50%; inset: -14px;) — чтобы навигационно-синие пути ФКН и DC читались, а HSE-печать получала мягкое окружение. На светлых фонах (#DFC7F2, #DCFF05, #FFFFFF) сияние не нужно.\n"
     "- Порядок: сначала ВШЭ, затем партнёры (ФКН, DC и др.)\n"
     "- Все логотипы должны быть СОРАЗМЕРНЫ — визуально одинакового масштаба\n"
     "- Квадратные лого (ВШЭ) — height: 40px; широкие (ФКН, ~5:1) — height: 24px; DC — height: 36px\n"

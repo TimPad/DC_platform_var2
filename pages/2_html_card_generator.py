@@ -40,8 +40,7 @@ def cover_text_color(bg_hex: str) -> str:
 
 def cover_accent_colors(bg_hex: str) -> dict:
     is_dark = bg_hex.upper() == "#102D69"
-    logo_pad = "4px" if is_dark else "0"
-    logo_border = "1px solid #ffffff" if is_dark else "none"
+    logo_glow = "rgba(255, 255, 255, 0.55)" if is_dark else "transparent"
     if bg_hex.upper() in ("#DFC7F2", "#FFFFFF"):
         return {
             "accent_stripe": "linear-gradient(90deg, #102D69 0%, #DCFF05 100%)",
@@ -50,8 +49,7 @@ def cover_accent_colors(bg_hex: str) -> dict:
             "badge_bg": "rgba(16, 45, 105, 0.15)",
             "badge_text_color": "#102D69",
             "badge_border": "rgba(16, 45, 105, 0.3)",
-            "logo_pad": logo_pad,
-            "logo_border": logo_border,
+            "logo_glow": logo_glow,
         }
     elif bg_hex.upper() == "#DCFF05":
         return {
@@ -61,8 +59,7 @@ def cover_accent_colors(bg_hex: str) -> dict:
             "badge_bg": "rgba(16, 45, 105, 0.15)",
             "badge_text_color": "#102D69",
             "badge_border": "rgba(16, 45, 105, 0.3)",
-            "logo_pad": logo_pad,
-            "logo_border": logo_border,
+            "logo_glow": logo_glow,
         }
     else:
         return {
@@ -72,8 +69,7 @@ def cover_accent_colors(bg_hex: str) -> dict:
             "badge_bg": "rgba(220, 255, 5, 0.15)",
             "badge_text_color": "#DCFF05",
             "badge_border": "rgba(220, 255, 5, 0.3)",
-            "logo_pad": logo_pad,
-            "logo_border": logo_border,
+            "logo_glow": logo_glow,
         }
 
 
@@ -756,8 +752,7 @@ with tab_covers:
                     badge_bg=accents["badge_bg"],
                     badge_text_color=accents["badge_text_color"],
                     badge_border=accents["badge_border"],
-                    logo_pad=accents["logo_pad"],
-                    logo_border=accents["logo_border"],
+                    logo_glow=accents["logo_glow"],
                 )
                 st.session_state['generated_cover_html'] = cover_html
                 st.success("Обложка сформирована!")
