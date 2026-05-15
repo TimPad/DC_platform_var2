@@ -686,8 +686,8 @@ with tab_covers:
         if st.checkbox("Data Culture", value=False, key="cover_logo_dc"):
             selected_logos.append("dc")
     with logo_cols[3]:
-        st.checkbox("Яндекс", value=False, disabled=True, key="cover_logo_yandex",
-                     help="Логотип в формате PDF — будет доступен после конвертации в SVG.")
+        if st.checkbox("Яндекс", value=False, key="cover_logo_yandex"):
+            selected_logos.append("yandex")
 
     st.markdown("#### Настройки")
     cover_col1, cover_col2 = st.columns(2)
