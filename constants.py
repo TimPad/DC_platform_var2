@@ -467,10 +467,29 @@ COVER_LOGO_DC_SVG = '''<svg width="348" height="229" viewBox="0 60 348 229" xmln
   </g>
 </svg>'''
 
+COVER_LOGO_FCS_OUTLINED_SVG = '''<svg width="740" height="141" viewBox="0 0 740 141" xmlns="http://www.w3.org/2000/svg">
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M0.5 70.709C0.5 31.972 31.9026 0.569336 70.6397 0.569336H232.003C270.74 0.569336 302.143 31.972 302.143 70.709C302.143 109.446 270.74 140.849 232.003 140.849H70.6397C31.9027 140.849 0.5 109.446 0.5 70.709ZM178.041 61.9416H226.262V77.2846H178.041V61.9416ZM125.436 61.9416H77.2153V77.2846H125.436V61.9416ZM540 5.35554H629.681V60.9646H648.552V5.35554H738.233V136.059H648.552V84.8335H629.681V136.059H540V5.35554ZM401.613 6.44291H310.111V137.146H401.613V87.2122L443.258 137.146H524.75V104.683L496.959 73.2648L524.75 41.1189V6.44291H443.258L401.613 58.8988V6.44291Z" fill="#102D69" stroke="#FFFFFF" stroke-width="1" stroke-linejoin="miter"/>
+</svg>'''
+
+COVER_LOGO_DC_OUTLINED_SVG = '''<svg width="348" height="229" viewBox="0 60 348 229" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(0,60)">
+    <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="miter">
+      <path d="M237.001 135.495V100.331L347.26 41.7236V76.888L271.105 116.894V118.932L347.26 158.938V194.103L237.001 135.495Z"/>
+      <path d="M0 228.824L82.3092 0H116.412L34.1032 228.824H0Z"/>
+      <path d="M88.9137 158.498L180.82 118.932V116.894L88.9137 76.4479V41.2835L214.923 100.331V135.495L88.9137 193.663V158.498Z"/>
+    </g>
+    <g fill="#102D69">
+      <path d="M237.001 135.495V100.331L347.26 41.7236V76.888L271.105 116.894V118.932L347.26 158.938V194.103L237.001 135.495Z"/>
+      <path d="M0 228.824L82.3092 0H116.412L34.1032 228.824H0Z"/>
+      <path d="M88.9137 158.498L180.82 118.932V116.894L88.9137 76.4479V41.2835L214.923 100.331V135.495L88.9137 193.663V158.498Z"/>
+    </g>
+  </g>
+</svg>'''
+
 COVER_LOGOS = {
-    "hse": {"name": "ВШЭ", "svg": COVER_LOGO_HSE_SVG, "height": 40},
-    "fcs": {"name": "ФКН", "svg": COVER_LOGO_FCS_SVG, "height": 32},
-    "dc":  {"name": "Data Culture", "svg": COVER_LOGO_DC_SVG, "height": 32},
+    "hse": {"name": "ВШЭ",          "svg": COVER_LOGO_HSE_SVG, "svg_dark": COVER_LOGO_HSE_SVG,          "height": 40},
+    "fcs": {"name": "ФКН",          "svg": COVER_LOGO_FCS_SVG, "svg_dark": COVER_LOGO_FCS_OUTLINED_SVG, "height": 32},
+    "dc":  {"name": "Data Culture", "svg": COVER_LOGO_DC_SVG,  "svg_dark": COVER_LOGO_DC_OUTLINED_SVG,  "height": 32},
 }
 
 COVER_HTML_TEMPLATE = '''<!DOCTYPE html>
@@ -556,21 +575,9 @@ COVER_HTML_TEMPLATE = '''<!DOCTYPE html>
       flex-wrap: wrap;
     }}
     .logo-wrapper {{
-      position: relative;
-      isolation: isolate;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-    }}
-    .logo-wrapper::before {{
-      content: "";
-      position: absolute;
-      inset: -14px;
-      background: {logo_glow};
-      border-radius: 50%;
-      filter: blur(18px);
-      z-index: -1;
-      pointer-events: none;
     }}
     .logo {{
       display: block;
@@ -683,7 +690,7 @@ COVER_SYSTEM_MESSAGE = (
     "- Композиция: два слоя — 1) спокойный, округлый, мягкий, 2) тёмный, острый, направленный\n"
     "- Декоративные маркеры на пересечениях осей\n\n"
     "ПРАВИЛА ЛОГОТИПОВ:\n"
-    "- Логотипы размещаются БЕЗ белой подложки, на прозрачном фоне. На тёмно-синем фоне (#102D69) под каждым логотипом располагается мягкое размытое белое сияние через CSS ::before (background: rgba(255,255,255,0.55); filter: blur(18px); border-radius: 50%; inset: -14px;) — чтобы навигационно-синие пути ФКН и DC читались, а HSE-печать получала мягкое окружение. На светлых фонах (#DFC7F2, #DCFF05, #FFFFFF) сияние не нужно.\n"
+    "- Логотипы вставляются как inline <svg> без подложки. На тёмно-синем фоне (#102D69) используются outlined-варианты ФКН и DC (с белым stroke поверх навигационно-синего fill) — доступны как svg_dark в COVER_LOGOS. На светлых фонах (#DFC7F2, #DCFF05, #FFFFFF) — обычные варианты (ключ svg). HSE-печать одна и та же для всех фонов.\n"
     "- Порядок: сначала ВШЭ, затем партнёры (ФКН, DC и др.)\n"
     "- Все логотипы должны быть СОРАЗМЕРНЫ — визуально одинакового масштаба\n"
     "- Квадратные лого (ВШЭ) — height: 40px; широкие (ФКН, ~5:1) — height: 24px; DC — height: 36px\n"

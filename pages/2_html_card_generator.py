@@ -18,12 +18,14 @@ from constants import (
 )
 
 
-def render_cover_logos(selected_keys: list) -> str:
+def render_cover_logos(selected_keys: list, bg_color: str) -> str:
+    is_dark = bg_color.upper() == "#102D69"
+    svg_key = "svg_dark" if is_dark else "svg"
     parts = []
     for key in selected_keys:
         logo = COVER_LOGOS[key]
         h = logo["height"]
-        svg = logo["svg"].strip()
+        svg = logo[svg_key].strip()
         svg = svg.replace('width=', 'data-orig-width=', 1).replace('height=', 'data-orig-height=', 1)
         if 'style="' in svg:
             svg = svg.replace('style="', f'style="height:{h}px;width:auto;display:block;', 1)
@@ -39,8 +41,6 @@ def cover_text_color(bg_hex: str) -> str:
 
 
 def cover_accent_colors(bg_hex: str) -> dict:
-    is_dark = bg_hex.upper() == "#102D69"
-    logo_glow = "rgba(255, 255, 255, 0.55)" if is_dark else "transparent"
     if bg_hex.upper() in ("#DFC7F2", "#FFFFFF"):
         return {
             "accent_stripe": "linear-gradient(90deg, #102D69 0%, #DCFF05 100%)",
@@ -49,7 +49,6 @@ def cover_accent_colors(bg_hex: str) -> dict:
             "badge_bg": "rgba(16, 45, 105, 0.15)",
             "badge_text_color": "#102D69",
             "badge_border": "rgba(16, 45, 105, 0.3)",
-            "logo_glow": logo_glow,
         }
     elif bg_hex.upper() == "#DCFF05":
         return {
@@ -59,7 +58,6 @@ def cover_accent_colors(bg_hex: str) -> dict:
             "badge_bg": "rgba(16, 45, 105, 0.15)",
             "badge_text_color": "#102D69",
             "badge_border": "rgba(16, 45, 105, 0.3)",
-            "logo_glow": logo_glow,
         }
     else:
         return {
@@ -69,7 +67,6 @@ def cover_accent_colors(bg_hex: str) -> dict:
             "badge_bg": "rgba(220, 255, 5, 0.15)",
             "badge_text_color": "#DCFF05",
             "badge_border": "rgba(220, 255, 5, 0.3)",
-            "logo_glow": logo_glow,
         }
 
 
@@ -735,7 +732,7 @@ with tab_covers:
                 sub_color = txt_color if txt_color == "#102D69" else "rgba(255, 255, 255, 0.85)"
                 accents = cover_accent_colors(bg_color)
                 gradient_end = COVER_GRADIENT_ENDS.get(bg_color, bg_color)
-                logos_html = render_cover_logos(selected_logos)
+                logos_html = render_cover_logos(selected_logos, bg_color)
 
                 cover_html = COVER_HTML_TEMPLATE.format(
                     bg_color=bg_color,
@@ -752,7 +749,6 @@ with tab_covers:
                     badge_bg=accents["badge_bg"],
                     badge_text_color=accents["badge_text_color"],
                     badge_border=accents["badge_border"],
-                    logo_glow=accents["logo_glow"],
                 )
                 st.session_state['generated_cover_html'] = cover_html
                 st.success("Обложка сформирована!")
@@ -771,10 +767,12 @@ with tab_covers:
                             f"- Бейдж: {cover_badge}\n"
                         )
                         if selected_logos:
+                            is_dark_bg = bg_color.upper() == "#102D69"
+                            svg_key = "svg_dark" if is_dark_bg else "svg"
                             logos_svg_section = ""
                             for k in selected_logos:
                                 logo = COVER_LOGOS[k]
-                                logos_svg_section += f"\nЛоготип {logo['name']} (inline SVG):\n{logo['svg']}\nВысота: {logo['height']}px, ширина: auto\n"
+                                logos_svg_section += f"\nЛоготип {logo['name']} (inline SVG):\n{logo[svg_key]}\nВысота: {logo['height']}px, ширина: auto\n"
                             user_msg += f"\nВстрой логотипы как inline SVG (НЕ img, а прямо <svg> тег) с style=\"height:Npx;width:auto;display:block;\":\n{logos_svg_section}"
 
                         response = client.chat.completions.create(
