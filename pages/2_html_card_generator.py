@@ -386,7 +386,7 @@ def generate_hse_html(client, user_text: str, accent_color: str, allow_text_edit
         system_msg = fcs_system_msg
 
     response = client.chat.completions.create(
-        model="deepseek-ai/DeepSeek-V3.2-fast",
+        model="deepseek-ai/DeepSeek-V4-Pro",
         messages=[
             {
                 "role": "system", 
@@ -776,7 +776,7 @@ with tab_covers:
                             user_msg += f"\nВстрой логотипы как inline SVG (НЕ img, а прямо <svg> тег) с style=\"height:Npx;width:auto;display:block;\":\n{logos_svg_section}"
 
                         response = client.chat.completions.create(
-                            model="deepseek-ai/DeepSeek-V3.2-fast",
+                            model="deepseek-ai/DeepSeek-V4-Pro",
                             messages=[
                                 {"role": "system", "content": COVER_SYSTEM_MESSAGE},
                                 {"role": "user", "content": user_msg}
