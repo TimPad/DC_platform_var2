@@ -251,7 +251,7 @@ def get_nebius_client():
             raise ValueError("NEBIUS_API_KEY не найден в переменных окружения (os.environ).")
     
     return OpenAI(
-        base_url="https://api.tokenfactory.us-central1.nebius.com/v1/",
+        base_url="https://api.tokenfactory.uk-south1.nebius.com/v1/",
         api_key=api_key
     )
 
