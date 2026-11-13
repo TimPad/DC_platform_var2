@@ -1,6 +1,7 @@
 """
 Logic for External Assessment Module
 """
+import re
 import numpy as np
 import pandas as pd
 from typing import Tuple, List
@@ -492,3 +493,41 @@ def update_final_grades(df: pd.DataFrame) -> Tuple[bool, int, str]:
             
     except Exception as e:
         return False, 0, f"Критическая ошибка при обновлении final_grades: {str(e)}"
+
+
+GRADE_VALUE_COLUMN_PATTERN = re.compile(r"^\s*(?:Задание|Тест):.*\(Значение\)(?:\.\d+)?\s*$")
+EMPTY_EMAIL_VALUES = {"", "nan", "none", "<na>"}
+
+
+def combine_grade_exports(frames: List[pd.DataFrame]) -> pd.DataFrame:
+    """Склеивает выгрузки оценок нескольких курсов в одну таблицу «один студент — одна строка».
+
+    Колонки разных курсов объединяются (у курсов могут быть разные названия заданий).
+    Если студент есть в нескольких курсах, его строки сводятся в одну: по колонкам
+    «Задание:/Тест:… (Значение)» берётся максимум, по остальным — первое непустое значение.
+    Строки без email отбрасываются.
+    """
+    frames = [frame for frame in frames if not frame.empty]
+    if not frames:
+        return pd.DataFrame()
+    for frame in frames:
+        if constants.COL_EMAIL not in frame.columns:
+            raise ValueError(f"Колонка '{constants.COL_EMAIL}' не найдена в одном из файлов.")
+
+    combined = pd.concat(frames, ignore_index=True, sort=False)
+    combined = clean_email_column(combined, constants.COL_EMAIL)
+    combined = combined[~combined[constants.COL_EMAIL].isin(EMPTY_EMAIL_VALUES)].copy()
+
+    grade_columns = [col for col in combined.columns if GRADE_VALUE_COLUMN_PATTERN.match(str(col))]
+    for col in grade_columns:
+        combined[col] = pd.to_numeric(
+            combined[col].astype("string").str.replace(",", ".", regex=False), errors="coerce"
+        )
+
+    aggregations = {
+        col: ("max" if col in grade_columns else "first")
+        for col in combined.columns
+        if col != constants.COL_EMAIL
+    }
+    result = combined.groupby(constants.COL_EMAIL, sort=False, as_index=False).agg(aggregations)
+    return result[list(combined.columns)]

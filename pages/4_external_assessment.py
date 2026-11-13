@@ -249,7 +249,8 @@ from logic.external_assessment import (
     deduplicate_and_split,
     process_external_assessment,
     process_project_assessment,
-    update_final_grades
+    update_final_grades,
+    combine_grade_exports,
 )
 from logic.student_management import load_students_from_supabase
 
@@ -398,23 +399,27 @@ with tab_tests:
 
 # --- ВКЛАДКА 2: ВНЕШНЕЕ ИЗМЕРЕНИЕ (ПРОЕКТЫ) ---
 with tab_projects:
-    st.subheader("Загрузка файла с оценками (Проекты)")
-    project_file = st.file_uploader(
-        "Выберите файл с оценками (CSV или Excel)",
+    st.subheader("Загрузка файлов с оценками (Проекты)")
+    project_files = st.file_uploader(
+        "Выберите файлы с оценками (CSV или Excel) — можно сразу все курсы",
         type=['csv', 'xlsx', 'xls'],
+        accept_multiple_files=True,
         key="project_grades_file",
-        help="Нужны «Адрес электронной почты» и колонки «Задание:… (Значение)» и «Тест:… (Значение)». Итог — округлённое среднее двух максимальных оценок."
+        help="Нужны «Адрес электронной почты» и колонки «Задание:… (Значение)» и «Тест:… (Значение)». Итог — округлённое среднее двух максимальных оценок. Файлы нескольких курсов склеиваются; если студент есть в нескольких курсах, берутся его лучшие оценки."
     )
 
-    if project_file:
+    if project_files:
         try:
-            with st.spinner("Загрузка файла..."):
-                if project_file.name.endswith('.csv'):
-                    project_grades_df = pd.read_csv(project_file)
-                else:
-                    project_grades_df = pd.read_excel(project_file)
-            
-            st.success("Файл успешно загружен!")
+            with st.spinner("Загрузка файлов..."):
+                frames = []
+                for project_file in project_files:
+                    if project_file.name.lower().endswith('.csv'):
+                        frames.append(pd.read_csv(project_file))
+                    else:
+                        frames.append(pd.read_excel(project_file))
+                project_grades_df = combine_grade_exports(frames)
+
+            st.success(f"Загружено файлов: {len(project_files)}")
             
             # Загрузка студентов (с кэшированием в session_state)
             if 'students_df_projects' not in st.session_state:
@@ -426,10 +431,10 @@ with tab_projects:
                 st.error("Список студентов пуст.")
             else:
                 col1, col2 = st.columns(2)
-                with col1: st.metric("Строк в файле", len(project_grades_df))
+                with col1: st.metric("Студентов в файлах", len(project_grades_df))
                 with col2: st.metric("Студентов в базе", len(students_df))
 
-                with st.expander("Предпросмотр CSV"):
+                with st.expander("Предпросмотр (после склейки)"):
                     st.dataframe(project_grades_df.head(), use_container_width=True)
 
                 if st.button("Обработать данные (Проекты)", type="primary", key="process_btn_projects"):

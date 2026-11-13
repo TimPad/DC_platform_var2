@@ -36,3 +36,6 @@ Thumbs.db
 venv/
 env/
 ENV/
+
+# Выгрузки оценок из edu.hse.ru
+grades_export/
