@@ -135,10 +135,10 @@ def main() -> int:
     if args.dry_run:
         print("\n--dry-run: в Supabase ничего не записано.")
     else:
-        save_success, save_msg = True, "Новых записей нет"
+        save_success, save_msg = True, "Новых записей"
         if not split["display_new_records"].empty:
             save_success, save_msg = save_to_supabase(split["display_new_records"])
-        print(f"peresdachi: {save_msg}")
+        print(f"peresdachi: {save_msg}: {split['new_count']}" if save_success else f"peresdachi: {save_msg}")
         if save_success:
             fg_success, fg_updated, fg_msg = update_final_grades(split["result_df"])
             print(f"final_grades: {fg_msg} ({fg_updated})")

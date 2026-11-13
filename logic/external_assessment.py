@@ -120,6 +120,31 @@ def load_registration_data_from_supabase() -> pd.DataFrame:
         print(f"Ошибка при загрузке данных из {constants.DB_TABLE_REGISTRATION_DATA}: {str(e)}")
         return pd.DataFrame()
 
+DUPLICATE_KEY_ERROR = "duplicate key value violates unique constraint"
+
+
+def _insert_skipping_duplicates(supabase, records: List[dict]) -> Tuple[int, int]:
+    """Вставляет записи в peresdachi и возвращает (сохранено, пропущено дубликатов).
+
+    Postgres отклоняет весь запрос, если в нём есть хотя бы один дубликат, поэтому
+    такую пачку делим пополам, пока не останутся сами дубликаты.
+    """
+    if not records:
+        return 0, 0
+    try:
+        supabase.table(constants.DB_TABLE_PERESDACHI).insert(records).execute()
+        return len(records), 0
+    except Exception as e:
+        if DUPLICATE_KEY_ERROR not in str(e):
+            raise
+        if len(records) == 1:
+            return 0, 1
+        middle = len(records) // 2
+        saved_left, skipped_left = _insert_skipping_duplicates(supabase, records[:middle])
+        saved_right, skipped_right = _insert_skipping_duplicates(supabase, records[middle:])
+        return saved_left + saved_right, skipped_left + skipped_right
+
+
 def save_to_supabase(df: pd.DataFrame) -> Tuple[bool, str]:
     """Сохранение данных в таблицу peresdachi в Supabase с использованием insert"""
     # Список колонок, которые реально существуют в таблице peresdachi
@@ -151,11 +176,11 @@ def save_to_supabase(df: pd.DataFrame) -> Tuple[bool, str]:
             cleaned_record = {k: (v if pd.notna(v) else None) for k, v in record.items()}
             cleaned_records.append(cleaned_record)
 
-        supabase.table(constants.DB_TABLE_PERESDACHI).insert(cleaned_records).execute()
+        saved, skipped = _insert_skipping_duplicates(supabase, cleaned_records)
+        if skipped:
+            return True, f"Сохранено {saved}, пропущено дубликатов {skipped}. Всего записей"
         return True, "Данные успешно сохранены."
     except Exception as e:
-        if "duplicate key value violates unique constraint" in str(e):
-            return True, "Обнаружены дубликаты при сохранении. Они были проигнорированы. Остальные данные сохранены."
         return False, f"Ошибка при сохранении в Supabase: {str(e)}"
 
 def get_new_records_from_dataframe(new_df: pd.DataFrame, existing_df: pd.DataFrame = None) -> pd.DataFrame:
