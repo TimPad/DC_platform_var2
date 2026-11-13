@@ -19,35 +19,26 @@ from constants import LOGO_URL
 # SUPABASE HELPERS
 # =============================================================================
 
-def fetch_all_from_supabase(table_name: str, select_query: str = "*", filters: dict = None, page_size: int = 1000) -> list:
-    """
-    Generic function to fetch all records from a Supabase table with pagination.
-    
-    Args:
-        table_name: Name of the table
-        select_query: Columns to select (default "*")
-        filters: Dictionary of filters to apply (e.g., {'курс': 'Курс 4'})
-        page_size: Number of records per page
-        
-    Returns:
-        List of all records
-    """
+def _fetch_pages(table_name: str, select_query: str, filters: dict, page_size: int, order_by: list) -> list:
     supabase = get_supabase_client()
     all_data = []
     offset = 0
-    
+
     while True:
         query = supabase.table(table_name).select(select_query)
-        
+
         if filters:
             for key, value in filters.items():
                 if isinstance(value, (list, tuple)):
                     query = query.in_(key, value)
                 else:
                     query = query.eq(key, value)
-                
+
+        for column in order_by:
+            query = query.order(column)
+
         response = query.range(offset, offset + page_size - 1).execute()
-        
+
         if response.data:
             all_data.extend(response.data)
             if len(response.data) < page_size:
@@ -55,8 +46,43 @@ def fetch_all_from_supabase(table_name: str, select_query: str = "*", filters: d
             offset += page_size
         else:
             break
-            
+
     return all_data
+
+
+def fetch_all_from_supabase(
+    table_name: str,
+    select_query: str = "*",
+    filters: dict = None,
+    page_size: int = 1000,
+    order_by=None,
+) -> list:
+    """
+    Generic function to fetch all records from a Supabase table with pagination.
+
+    Args:
+        table_name: Name of the table
+        select_query: Columns to select (default "*")
+        filters: Dictionary of filters to apply (e.g., {'курс': 'Курс 4'})
+        page_size: Number of records per page
+        order_by: Column name or list of names to sort by. Без сортировки Postgres не
+            гарантирует порядок строк между страницами, и строки могут пропускаться или
+            дублироваться. Имена с пробелами передавайте в двойных кавычках.
+            Если запрос с сортировкой не проходит, загрузка повторяется без неё.
+
+    Returns:
+        List of all records
+    """
+    if isinstance(order_by, str):
+        order_by = [order_by]
+    order_by = list(order_by or [])
+
+    if not order_by:
+        return _fetch_pages(table_name, select_query, filters, page_size, [])
+    try:
+        return _fetch_pages(table_name, select_query, filters, page_size, order_by)
+    except Exception:
+        return _fetch_pages(table_name, select_query, filters, page_size, [])
 
 # =============================================================================
 # LUCIDE SVG ИКОНКИ

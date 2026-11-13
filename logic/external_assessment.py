@@ -38,26 +38,34 @@ def load_peresdachi_by_date_range(date_from, date_to) -> pd.DataFrame:
         # Добавляем 1 день, чтобы включить записи созданные в течение всего дня date_to
         to_str = (date_to + timedelta(days=1)).isoformat()
 
-        all_data = []
-        page_size = 1000
-        offset = 0
-
-        while True:
-            response = (
-                supabase.table(constants.DB_TABLE_PERESDACHI)
-                .select("*")
-                .gte("created_at", from_str)
-                .lt("created_at", to_str)
-                .range(offset, offset + page_size - 1)
-                .execute()
-            )
-            if response.data:
-                all_data.extend(response.data)
-                if len(response.data) < page_size:
+        def fetch(ordered: bool) -> list:
+            rows = []
+            page_size = 1000
+            offset = 0
+            while True:
+                query = (
+                    supabase.table(constants.DB_TABLE_PERESDACHI)
+                    .select("*")
+                    .gte("created_at", from_str)
+                    .lt("created_at", to_str)
+                )
+                if ordered:
+                    # Стабильный порядок строк между страницами
+                    query = query.order("created_at").order("id")
+                response = query.range(offset, offset + page_size - 1).execute()
+                if response.data:
+                    rows.extend(response.data)
+                    if len(response.data) < page_size:
+                        break
+                    offset += page_size
+                else:
                     break
-                offset += page_size
-            else:
-                break
+            return rows
+
+        try:
+            all_data = fetch(ordered=True)
+        except Exception:
+            all_data = fetch(ordered=False)
 
         if all_data:
             return pd.DataFrame(all_data)
@@ -69,7 +77,10 @@ def load_student_io_from_supabase() -> pd.DataFrame:
     """Загрузка данных из таблицы student_io"""
     try:
         select_query = f'"{constants.COL_EMAIL}", "{constants.COL_DISCIPLINE}", "{constants.COL_GRADE}"'
-        all_data = fetch_all_from_supabase(constants.DB_TABLE_STUDENT_IO, select_query=select_query)
+        # Сортировка по всем выбранным колонкам делает постраничную загрузку стабильной
+        all_data = fetch_all_from_supabase(
+            constants.DB_TABLE_STUDENT_IO, select_query=select_query, order_by=select_query.split(', ')
+        )
         
         if all_data:
             df = pd.DataFrame(all_data)
@@ -84,7 +95,7 @@ def load_student_io_from_supabase() -> pd.DataFrame:
 def load_registration_data_from_supabase() -> pd.DataFrame:
     """Загрузка данных из таблицы registration_data"""
     try:
-        all_data = fetch_all_from_supabase(constants.DB_TABLE_REGISTRATION_DATA)
+        all_data = fetch_all_from_supabase(constants.DB_TABLE_REGISTRATION_DATA, order_by='id')
         if all_data:
             df = pd.DataFrame(all_data)
             df = clean_email_column(df, constants.COL_EMAIL)

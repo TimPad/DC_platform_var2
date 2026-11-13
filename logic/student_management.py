@@ -138,7 +138,7 @@ def load_students_from_supabase(filters: dict = None) -> pd.DataFrame:
     """
     try:
         # Используем fetch_all_from_supabase из utils для пагинации
-        all_data = fetch_all_from_supabase('students', filters=filters)
+        all_data = fetch_all_from_supabase('students', filters=filters, order_by='корпоративная_почта')
         
         if all_data:
             df = pd.DataFrame(all_data)
