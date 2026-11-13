@@ -5,6 +5,7 @@ Handling student list loading, parsing, and updating in Supabase.
 import pandas as pd
 from typing import Tuple
 import time
+import streamlit as st
 from utils import get_supabase_client, fetch_all_from_supabase
 from logic.data_utils import read_uploaded_file
 from constants import STUDENT_REQUIRED_COLUMNS, STUDENT_DB_TO_DF_MAPPING, HSE_EMAIL_DOMAIN
@@ -131,10 +132,13 @@ def upload_students_to_supabase(supabase, student_data: pd.DataFrame) -> Tuple[b
     except Exception as e:
         return False, f"Критическая ошибка UPSERT студентов: {e}"
 
+@st.cache_data(ttl=300, show_spinner=False)
 def load_students_from_supabase(filters: dict = None) -> pd.DataFrame:
     """
     Загрузка списка студентов из Supabase с кэшированием (TTL 300с).
     Поддерживает фильтрацию (например, {'курс': 'Курс 4'}).
+
+    После изменения таблицы students сбрасывайте кэш: load_students_from_supabase.clear().
     """
     try:
         # Используем fetch_all_from_supabase из utils для пагинации

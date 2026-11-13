@@ -123,6 +123,8 @@ if students_file:
                 try:
                     success, msg = upload_students_to_supabase(supabase, students_df)
                     if success:
+                        # Список студентов изменился — сбрасываем кэш загрузки
+                        load_students_from_supabase.clear()
                         st.success(msg)
                         st.balloons()
                     else:
