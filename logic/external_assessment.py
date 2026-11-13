@@ -9,10 +9,25 @@ from utils import get_supabase_client, fetch_all_from_supabase
 from logic.data_utils import clean_email_column, clean_string_column, filter_valid_grades
 import constants
 
-def load_existing_peresdachi() -> pd.DataFrame:
-    """Загрузка существующих записей из таблицы peresdachi"""
+# Колонки peresdachi, которых достаточно для приоритета оценок и поиска новых записей
+PERESDACHI_COMPARE_COLUMNS = [constants.COL_EMAIL, constants.COL_DISCIPLINE, constants.COL_GRADE]
+
+
+def load_existing_peresdachi(columns: List[str] = None) -> pd.DataFrame:
+    """Загрузка существующих записей из таблицы peresdachi.
+
+    columns: загрузить только эти колонки (по умолчанию — все). Таблица растёт,
+    а для сравнения нужны две-три колонки, поэтому вызывающий код передаёт их явно.
+    """
     try:
-        all_data = fetch_all_from_supabase(constants.DB_TABLE_PERESDACHI)
+        if columns:
+            quoted = [f'"{column}"' for column in columns]
+            # Сортировка по всем выбранным колонкам делает постраничную загрузку стабильной
+            all_data = fetch_all_from_supabase(
+                constants.DB_TABLE_PERESDACHI, select_query=", ".join(quoted), order_by=quoted
+            )
+        else:
+            all_data = fetch_all_from_supabase(constants.DB_TABLE_PERESDACHI, order_by="id")
         if all_data:
             return pd.DataFrame(all_data)
         return pd.DataFrame()
@@ -143,10 +158,14 @@ def save_to_supabase(df: pd.DataFrame) -> Tuple[bool, str]:
             return True, "Обнаружены дубликаты при сохранении. Они были проигнорированы. Остальные данные сохранены."
         return False, f"Ошибка при сохранении в Supabase: {str(e)}"
 
-def get_new_records_from_dataframe(new_df: pd.DataFrame) -> pd.DataFrame:
-    """Получить только новые записи, сравнивая с существующими в БД"""
+def get_new_records_from_dataframe(new_df: pd.DataFrame, existing_df: pd.DataFrame = None) -> pd.DataFrame:
+    """Получить только новые записи, сравнивая с существующими в БД.
+
+    existing_df: уже загруженные записи peresdachi; если не переданы, загружаются из БД.
+    """
     try:
-        existing_df = load_existing_peresdachi()
+        if existing_df is None:
+            existing_df = load_existing_peresdachi(columns=[constants.COL_EMAIL, constants.COL_DISCIPLINE])
         if existing_df.empty:
             return new_df
         
@@ -164,8 +183,16 @@ def get_new_records_from_dataframe(new_df: pd.DataFrame) -> pd.DataFrame:
     except Exception as e:
         raise ValueError(f"Ошибка при определении новых записей: {str(e)}")
 
-def process_external_assessment(grades_df: pd.DataFrame, students_df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
-    """Обработка пересдач внешней оценки"""
+def process_external_assessment(
+    grades_df: pd.DataFrame,
+    students_df: pd.DataFrame,
+    existing_peresdachi_df: pd.DataFrame = None,
+) -> Tuple[pd.DataFrame, List[str]]:
+    """Обработка пересдач внешней оценки.
+
+    existing_peresdachi_df: уже загруженные записи peresdachi (email, дисциплина, оценка);
+    если не переданы, загружаются из БД.
+    """
     logs = []
     
     # Шаг 1: Очистка данных
@@ -286,7 +313,10 @@ def process_external_assessment(grades_df: pd.DataFrame, students_df: pd.DataFra
     # Шаг 8: Проверка peresdachi
     logs.append(f"Проверка существующих оценок в {constants.DB_TABLE_PERESDACHI}...")
     try:
-        existing_peresdachi_df = load_existing_peresdachi()
+        if existing_peresdachi_df is None:
+            existing_peresdachi_df = load_existing_peresdachi(columns=PERESDACHI_COMPARE_COLUMNS)
+        else:
+            existing_peresdachi_df = existing_peresdachi_df.copy()
         if not existing_peresdachi_df.empty:
             existing_peresdachi_df = clean_email_column(existing_peresdachi_df, constants.COL_EMAIL)
             existing_peresdachi_df = clean_string_column(existing_peresdachi_df, constants.COL_DISCIPLINE)
@@ -410,9 +440,11 @@ def process_project_assessment(grades_df: pd.DataFrame, students_df: pd.DataFram
     
     return result_df, logs
 
-def deduplicate_and_split(result_df: pd.DataFrame, conflict_cols: List[str] = None):
+def deduplicate_and_split(result_df: pd.DataFrame, conflict_cols: List[str] = None, existing_df: pd.DataFrame = None):
     """
     Дедупликация результата и разделение на полный набор и только новые записи.
+
+    existing_df: уже загруженные записи peresdachi; если не переданы, загружаются из БД.
 
     Returns:
         dict с ключами: result_df, display_new_records, total_count, new_count, duplicates_removed
@@ -428,7 +460,7 @@ def deduplicate_and_split(result_df: pd.DataFrame, conflict_cols: List[str] = No
     if duplicates_removed > 0:
         result_df = result_df_cleaned
 
-    display_new_records = get_new_records_from_dataframe(result_df)
+    display_new_records = get_new_records_from_dataframe(result_df, existing_df=existing_df)
     display_new_records = display_new_records.drop_duplicates(subset=conflict_cols, keep='first')
 
     return {

@@ -251,6 +251,7 @@ from logic.external_assessment import (
     process_project_assessment,
     update_final_grades,
     combine_grade_exports,
+    PERESDACHI_COMPARE_COLUMNS,
 )
 from logic.student_management import load_students_from_supabase
 
@@ -316,7 +317,12 @@ with tab_tests:
             if st.button("Обработать данные (Тесты)", type="primary", key="process_btn_tests"):
                 with st.spinner("Обработка пересдач..."):
                     try:
-                        result_df, logs = process_external_assessment(grades_df, students_df)
+                        # peresdachi нужна и для приоритета оценок, и для поиска новых записей —
+                        # загружаем один раз и только нужные колонки
+                        existing_peresdachi_df = load_existing_peresdachi(columns=PERESDACHI_COMPARE_COLUMNS)
+                        result_df, logs = process_external_assessment(
+                            grades_df, students_df, existing_peresdachi_df=existing_peresdachi_df
+                        )
                         for log_msg in logs:
                             st.info(log_msg)
 
@@ -327,7 +333,7 @@ with tab_tests:
                             st.session_state['result_df_tests'] = result_df
                             
                             # 2. Дедупликация и разделение на новые/старые
-                            split = deduplicate_and_split(result_df)
+                            split = deduplicate_and_split(result_df, existing_df=existing_peresdachi_df)
 
                             # Сохраняем обработанное состояние для отображения
                             st.session_state['tests_processed_state'] = {
