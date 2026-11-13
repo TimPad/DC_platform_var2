@@ -403,7 +403,7 @@ with tab_projects:
         "Выберите файл с оценками (CSV или Excel)",
         type=['csv', 'xlsx', 'xls'],
         key="project_grades_file",
-        help="Файл (CSV или Excel) с колонками 'Задание:...' и 'Адрес электронной почты'"
+        help="Нужны «Адрес электронной почты» и колонки «Задание:… (Значение)» и «Тест:… (Значение)». Итог — округлённое среднее двух максимальных оценок."
     )
 
     if project_file:
@@ -440,7 +440,7 @@ with tab_projects:
                                 st.info(log_msg)
                             
                             if result_df.empty:
-                                st.error("Результат пуст. Проверьте соответствие колонок (email, задания).")
+                                st.error("В файле нет строк с оценками и за задание, и за тест.")
                             else:
                                 # 1. Сохраняем в session_state
                                 st.session_state['result_df_projects'] = result_df
@@ -455,7 +455,9 @@ with tab_projects:
                                     'save_msg': ''
                                 }
 
-                                save_success, save_msg = save_to_supabase(split['display_new_records'])
+                                save_success, save_msg = True, "Сохранено новых записей"
+                                if not split['display_new_records'].empty:
+                                    save_success, save_msg = save_to_supabase(split['display_new_records'])
                                 st.session_state['projects_processed_state']['save_success'] = save_success
                                 st.session_state['projects_processed_state']['save_msg'] = save_msg
                                 
@@ -463,7 +465,7 @@ with tab_projects:
                                 # так как даже если запись не новая для peresdachi, оценка могла измениться
                                 if save_success:
                                     st.info("Обновление сводной таблицы final_grades...")
-                                    fg_success, fg_updated, fg_msg = update_final_grades(result_df)
+                                    fg_success, fg_updated, fg_msg = update_final_grades(split['result_df'])
                                     if fg_success:
                                         st.success(f"Таблица final_grades успешно обновлена. Обработано записей: {fg_updated}")
                                     else:

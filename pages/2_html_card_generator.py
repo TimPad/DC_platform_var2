@@ -12,7 +12,7 @@ import streamlit.components.v1 as components
 from utils import icon, get_nebius_client
 from constants import (
     LOGO_URL, LOGO_URL_BLACK, LOGO_URL_PNG, HTML_EXAMPLE, SYSTEM_MESSAGE,
-    TEMPLATES, FCS_TEMPLATE, LOGO_URL_FCS,
+    TEMPLATES, FCS_TEMPLATE, LOGO_URL_FCS, NEBIUS_MODEL,
     COVER_BRAND_COLORS, COVER_GRADIENT_ENDS, COVER_LOGOS,
     COVER_HTML_TEMPLATE, COVER_SYSTEM_MESSAGE,
 )
@@ -386,7 +386,7 @@ def generate_hse_html(client, user_text: str, accent_color: str, allow_text_edit
         system_msg = fcs_system_msg
 
     response = client.chat.completions.create(
-        model="deepseek-ai/DeepSeek-V4-Pro",
+        model=NEBIUS_MODEL,
         messages=[
             {
                 "role": "system", 
@@ -776,10 +776,10 @@ with tab_covers:
                             user_msg += f"\nВстрой логотипы как inline SVG (НЕ img, а прямо <svg> тег) с style=\"height:Npx;width:auto;display:block;\":\n{logos_svg_section}"
 
                         response = client.chat.completions.create(
-                            model="deepseek-ai/DeepSeek-V4-Pro",
+                            model=NEBIUS_MODEL,
                             messages=[
                                 {"role": "system", "content": COVER_SYSTEM_MESSAGE},
-                                {"role": "user", "content": user_msg}
+                                {"role": "user", "content": [{"type": "text", "text": user_msg}]}
                             ],
                             timeout=120.0
                         )

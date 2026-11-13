@@ -6,6 +6,7 @@ LOGO_URL = "https://raw.githubusercontent.com/TimPad/html/main/DC_green.svg"
 LOGO_URL_BLACK = "https://raw.githubusercontent.com/TimPad/DC_platform_var2/main/icons/DC_black.svg"
 LOGO_URL_PNG = "https://raw.githubusercontent.com/TimPad/DC_platform_var2/main/dc.png"
 LOGO_URL_FCS = "https://raw.githubusercontent.com/TimPad/DC_platform_var2/main/fcs.svg"
+NEBIUS_MODEL = "deepseek-ai/DeepSeek-V4.1-Flash-1017"
 
 HTML_EXAMPLE = f"""<div style="
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -320,6 +321,9 @@ DB_TABLE_REGISTRATION_DATA = 'registration_data'
 COL_EMAIL = 'Адрес электронной почты'
 COL_DISCIPLINE = 'Наименование дисциплины'
 COL_GRADE = 'Оценка'
+COL_PROJECT_GRADE = 'Оценка за проект'
+COL_TEST_GRADE = 'Оценка за тест'
+COL_FINAL_GRADE = 'Итоговая оценка'
 COL_CAMPUS = 'Кампус'
 COL_CAMPUS_OLD = 'Филиал (кампус)'
 COL_FIO = 'ФИО'
